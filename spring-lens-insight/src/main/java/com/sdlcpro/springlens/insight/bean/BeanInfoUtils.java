@@ -1,7 +1,6 @@
 package com.sdlcpro.springlens.insight.bean;
 
 import com.sdlcpro.springlens.annotation.SpringLensInternalComponent;
-import com.sdlcpro.springlens.insight.http.endpoint.ToolInternalEndpointMatcher;
 import com.sdlcpro.springlens.insight.support.matcher.ClassNameMatcher;
 import com.sdlcpro.springlens.insight.support.matcher.PackageMatcher;
 import com.sdlcpro.springlens.matcher.CompositeMatcher;
@@ -138,7 +137,7 @@ public final class BeanInfoUtils {
         matcher.addExcludeMatcher(new PackageMatcher<>(settings.excludePackagePatterns()));
 
         if (!settings.includeToolInternal()) {
-            matcher.addExcludeMatcher(new ToolInternalEndpointMatcher<>());
+            matcher.addExcludeMatcher(new ToolInternalComponentMatcher<>());
         }
 
         return matcher;
