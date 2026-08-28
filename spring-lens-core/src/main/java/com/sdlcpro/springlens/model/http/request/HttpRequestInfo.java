@@ -11,6 +11,7 @@ import java.time.Instant;
  * unhandled exception that occurred during processing.
  */
 public record HttpRequestInfo(
+        String id,
         HttpRequestData requestData,
         HttpResponseData responseData,
         Instant startTime,
@@ -20,6 +21,7 @@ public record HttpRequestInfo(
         Throwable error) {
 
     public HttpRequestInfo {
+        Preconditions.hasText(id, "The value of id must not be blank");
         Preconditions.notNull(requestData, "HttpRequestData must not be null");
         Preconditions.notNull(responseData, "HttpResponseData must not be null");
         Preconditions.notNull(startTime, "The value of startTime must not be null");
