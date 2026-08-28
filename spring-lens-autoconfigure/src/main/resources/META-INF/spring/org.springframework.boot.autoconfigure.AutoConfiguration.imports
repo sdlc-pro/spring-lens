@@ -1,3 +1,4 @@
 com.sdlcpro.springlens.autoconfigure.bean.definition.SpringLensBeanDefinitionInfoAutoConfiguration
 com.sdlcpro.springlens.autoconfigure.bean.instance.SpringLensBeanInstanceInfoAutoConfiguration
 com.sdlcpro.springlens.autoconfigure.bean.condition.SpringLensConditionReportAutoConfiguration
+com.sdlcpro.springlens.autoconfigure.http.request.SpringLensHttpRequestInfoAutoConfiguration
