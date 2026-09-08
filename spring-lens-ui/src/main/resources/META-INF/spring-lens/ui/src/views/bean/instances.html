@@ -128,8 +128,20 @@
                     <select id="time-filter-created"
                         class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
                         <option value="">Created: All</option>
-                        <option value="oldest">Startup Order (Oldest First)</option>
-                        <option value="newest">Newest First</option>
+                        <option value="ASC">Startup Order (Oldest First)</option>
+                        <option value="DESC">Newest First</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Init Duration Filter Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-duration"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
+                        <option value="">Duration: All</option>
+                        <option value="DESC">Slowest First</option>
+                        <option value="ASC">Fastest First</option>
                     </select>
                     <span
                         class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
@@ -319,11 +331,15 @@
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-amber-500"></span>
-                        <span>20-50ms</span>
+                        <span>Medium 20-50ms</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded bg-orange-500"></span>
+                        <span>High 50-100ms</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-rose-500"></span>
-                        <span class="font-bold text-rose-500 dark:text-rose-400">&gt;50ms (Bottleneck)</span>
+                        <span class="font-bold text-rose-500 dark:text-rose-400">&gt;100ms (Bottleneck)</span>
                     </div>
                     <div class="flex items-center gap-1 border-l border-gray-200 dark:border-slate-800 pl-3">
                         <span>Relative to boot</span>
@@ -511,7 +527,8 @@
                                 class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
                                 <span
                                     class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5 flex-shrink-0">
-                                    <span class="material-symbols-outlined text-[14px] text-blue-500">hub</span> Context ID
+                                    <span class="material-symbols-outlined text-[14px] text-blue-500">hub</span> Context
+                                    ID
                                 </span>
                                 <span
                                     class="font-bold text-[10.5px] font-mono text-gray-800 dark:text-gray-200 truncate max-w-[170px] cursor-default select-all"
@@ -559,7 +576,8 @@
                         <div class="flex items-center justify-between">
                             <h4
                                 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[13px] text-indigo-500">security</span> AOP Proxy Info
+                                <span class="material-symbols-outlined text-[13px] text-indigo-500">security</span> AOP
+                                Proxy Info
                             </h4>
                             <!-- Proxy Type Pill (Shown when proxied) -->
                             <span id="time-sidebar-proxy-type"
@@ -573,15 +591,19 @@
                             <div class="inline-block animate-spin text-indigo-500">
                                 <span class="material-symbols-outlined text-[22px]">progress_activity</span>
                             </div>
-                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-mono">Inspecting proxy metadata...</p>
+                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-mono">Inspecting proxy
+                                metadata...</p>
                         </div>
 
                         <!-- Proxy Available Content -->
                         <div id="time-sidebar-proxy-content" class="hidden space-y-2.5 text-xs">
                             <!-- Target Class -->
-                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
-                                <div class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 mb-1">
-                                    <span class="material-symbols-outlined text-[13px] text-blue-500">code</span> Target Class
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <div
+                                    class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 mb-1">
+                                    <span class="material-symbols-outlined text-[13px] text-blue-500">code</span> Target
+                                    Class
                                 </div>
                                 <div id="time-sidebar-proxy-target-class"
                                     class="font-mono text-[10.5px] text-gray-800 dark:text-gray-200 truncate select-all break-all leading-tight font-medium"
@@ -589,9 +611,12 @@
                             </div>
 
                             <!-- Advice Frozen Status -->
-                            <div class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
-                                <span class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[14px] text-purple-500">lock</span> Advice Frozen
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-purple-500">lock</span>
+                                    Advice Frozen
                                 </span>
                                 <span id="time-sidebar-proxy-frozen"
                                     class="font-bold text-[9.5px] font-mono px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300">
@@ -600,29 +625,39 @@
                             </div>
 
                             <!-- Advices List -->
-                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[13px] text-amber-500">alt_route</span> Advices &amp; Interceptors
+                                    <span
+                                        class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span
+                                            class="material-symbols-outlined text-[13px] text-amber-500">alt_route</span>
+                                        Advices &amp; Interceptors
                                     </span>
                                     <span id="time-sidebar-proxy-advices-count"
                                         class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-300">0</span>
                                 </div>
-                                <div id="time-sidebar-proxy-advices-list" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
+                                <div id="time-sidebar-proxy-advices-list"
+                                    class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
                                     <!-- Rendered dynamically -->
                                 </div>
                             </div>
 
                             <!-- Proxied Interfaces List -->
-                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[13px] text-emerald-500">integration_instructions</span> Proxied Interfaces
+                                    <span
+                                        class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span
+                                            class="material-symbols-outlined text-[13px] text-emerald-500">integration_instructions</span>
+                                        Proxied Interfaces
                                     </span>
                                     <span id="time-sidebar-proxy-interfaces-count"
                                         class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">0</span>
                                 </div>
-                                <div id="time-sidebar-proxy-interfaces-list" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
+                                <div id="time-sidebar-proxy-interfaces-list"
+                                    class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
                                     <!-- Rendered dynamically -->
                                 </div>
                             </div>
@@ -635,8 +670,10 @@
                                 class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/50 mx-auto shadow-2xs mb-2.5">
                                 <span class="material-symbols-outlined text-[20px]">verified_user</span>
                             </div>
-                            <div class="text-[12px] font-bold text-gray-800 dark:text-gray-200">Direct Bean Instance</div>
-                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px] mx-auto mt-1">
+                            <div class="text-[12px] font-bold text-gray-800 dark:text-gray-200">Direct Bean Instance
+                            </div>
+                            <p
+                                class="text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px] mx-auto mt-1">
                                 Raw POJO instance without AOP proxy or CGLIB interceptor wrappers.
                             </p>
                         </div>
@@ -651,10 +688,12 @@
                     class="w-full py-2.5 px-3.5 bg-primary/10 hover:bg-primary/15 active:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/25 text-primary dark:text-purple-300 border border-primary/20 hover:border-primary/35 dark:border-primary/30 rounded-xl text-xs font-bold flex items-center justify-between shadow-2xs hover:shadow-xs transition-all group cursor-pointer"
                     id="time-btn-view-details">
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[17px] text-primary dark:text-purple-300 group-hover:rotate-12 transition-transform">schema</span>
+                        <span
+                            class="material-symbols-outlined text-[17px] text-primary dark:text-purple-300 group-hover:rotate-12 transition-transform">schema</span>
                         <span>Open in Definitions</span>
                     </span>
-                    <span class="material-symbols-outlined text-[16px] text-primary/70 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+                    <span
+                        class="material-symbols-outlined text-[16px] text-primary/70 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
                 </a>
             </div>
         </div>
@@ -681,7 +720,8 @@
     <div class="flex items-center justify-between py-1 px-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800/80 text-[10.5px] font-mono"
         data-field="itemContainer">
         <span class="text-gray-800 dark:text-gray-200 truncate font-medium" data-field="name" title=""></span>
-        <span class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0" data-field="badge"></span>
+        <span class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0"
+            data-field="badge"></span>
     </div>
 </template>
 
@@ -722,7 +762,7 @@
                 data-field="bar">
                 <span class="truncate bar-inner-label" data-field="barLabel"></span>
             </div>
-            <!-- Bottleneck flame badge if > 50ms -->
+            <!-- Bottleneck flame badge if > 100ms -->
             <div class="absolute hidden items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-bold shadow-xs z-10 pointer-events-none"
                 data-field="bottleneckBadge">
                 <span class="material-symbols-outlined text-[11px]">local_fire_department</span>

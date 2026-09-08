@@ -1,12 +1,12 @@
-import ENDPOINTS from './src/helper/api-endpoints.js';
 import Route from './src/helper/route.js';
-import BeanDefinitions from './src/controller/definition.js';
+import { PageHeader } from './src/helper/index.js';
 import Instance from './src/controller/instance.js';
+import ENDPOINTS from './src/helper/api-endpoints.js';
 import Dashboard from './src/controller/dashboard.js';
+import BeanDefinitions from './src/controller/definition.js';
 import DependencyGraph from './src/controller/dependency-graph.js';
 import ConditionalReport from './src/controller/conditional-report.js';
 import ApplicationState from './src/controller/application-state.js';
-import { PageHeader } from './src/helper/index.js';
 
 $(document).ready(() => {
 

@@ -12,7 +12,6 @@ import {
     debounce,
     downloadJson,
     formatDuration,
-    formatTickLabel,
     Pagination,
     QueryParam,
     resolveAdviceFrozenClass,
@@ -121,8 +120,8 @@ export default class Instance {
             totalCreatedInstances = 0,
             instancesWithDefinition = 0,
             instancesWithoutDefinition = 0,
-            totalInitializationDurationNanos = 0,
             maxInitializationDurationNanos = 0,
+            totalInitializationDurationNanos = 0,
             averageInitializationDurationNanos = 0
         } = summaryData;
 
@@ -157,7 +156,7 @@ export default class Instance {
             );
 
             this.processPaginatedResponse(responseData, append);
-            this.computeinstanceMetrics();
+            this.computeInstanceMetrics();
             this.applyLocalFilters();
             this._populateContextDropdown();
             this.renderCurrentView();
@@ -213,7 +212,7 @@ export default class Instance {
         return resolveBeanLayer(bean);
     }
 
-    computeinstanceMetrics() {
+    computeInstanceMetrics() {
         if (!this.instances || this.instances.length === 0) {
             this.maxTimeMs = 10;
             this.maxDurationNanos = 0;
@@ -248,12 +247,12 @@ export default class Instance {
         if (this.quickFilter === 'bottlenecks') {
             result = result.filter(inst => {
                 const dur = this.getDurationColor(inst.initDurationNanos, this.maxDurationNanos);
-                return dur.tier === 'bottleneck' || dur.tier === 'heavy' || dur.isBottleneck;
+                return dur.isBottleneck || dur.tier === 'bottleneck';
             });
         } else if (this.quickFilter === 'slow') {
             result = result.filter(inst => {
                 const dur = this.getDurationColor(inst.initDurationNanos, this.maxDurationNanos);
-                return dur.tier === 'slow' || dur.tier === 'elevated' || dur.tier === 'notable';
+                return dur.tier === 'high' || dur.tier === 'medium' || dur.tier === 'heavy' || dur.tier === 'slow' || dur.tier === 'elevated' || dur.tier === 'notable';
             });
         } else if (this.quickFilter === 'fast') {
             result = result.filter(inst => {
@@ -283,10 +282,6 @@ export default class Instance {
             this.renderPagination();
         }
     }
-
-    /* ======================================================================
-       GANTT WATERFALL RENDERING
-       ====================================================================== */
 
     renderGanttView() {
         this.renderTimeRulerAndGrid();
@@ -353,10 +348,6 @@ export default class Instance {
         return calculateTimeTicks(maxMs);
     }
 
-    _formatTickLabel(ms) {
-        return formatTickLabel(ms);
-    }
-
     renderGanttRows() {
         const $container = $('#instance-waterfall-rows');
         if (!$container.length) return;
@@ -385,7 +376,7 @@ export default class Instance {
         if (!clone?.firstElementChild) return null;
 
         const $row = $(clone.firstElementChild);
-        const { beanName, contextId, initDurationMs = 0, initDurationNanos = 0, relativeStartMs = 0, layer, scope } = inst;
+        const { beanName, contextId, initDurationMs = 0, initDurationNanos = 0, layer } = inst;
 
         const isSelected = (this.selectedBeanName === beanName) && (this.selectedContextId === contextId);
         if (isSelected) {
@@ -473,10 +464,6 @@ export default class Instance {
         $('#time-loaded-summary-text').text(`Showing ${currentCount.toLocaleString()} of ${totalElements.toLocaleString()} instances (max latency ${this.formatDuration((this.maxTimeMs || 0) * 1e6)})`);
     }
 
-    /* ======================================================================
-       TABLE VIEW RENDERING (Matching Instances Table)
-       ====================================================================== */
-
     renderTableRows() {
         const $tbody = $('#beanInstanceTableBody').length ? $('#beanInstanceTableBody') : $('#time-table-body');
         if (!$tbody.length) return;
@@ -484,7 +471,7 @@ export default class Instance {
         $tbody.empty();
 
         if (!this.filteredInstances || this.filteredInstances.length === 0) {
-            const emptyClone = TemplateEngine.clone('tpl-instance-empty') || TemplateEngine.clone('tpl-instance-empty');
+            const emptyClone = TemplateEngine.clone('tpl-instance-empty');
             if (emptyClone) $tbody.append(emptyClone);
             return;
         }
@@ -500,7 +487,7 @@ export default class Instance {
     }
 
     _createTableRowNode(inst) {
-        const clone = TemplateEngine.clone('tpl-instance-row') || TemplateEngine.clone('tpl-instance-row');
+        const clone = TemplateEngine.clone('tpl-instance-row');
         if (!clone?.firstElementChild) return null;
 
         const $row = $(clone.firstElementChild);
@@ -577,7 +564,7 @@ export default class Instance {
         } else {
             const $tbody = $beanInstanceTableBody.length ? $beanInstanceTableBody : $('#time-table-body');
             if (!$tbody.length) return;
-            const clone = TemplateEngine.clone('tpl-instance-loading') || TemplateEngine.clone('tpl-instance-loading');
+            const clone = TemplateEngine.clone('tpl-instance-loading');
             if (clone) $tbody.empty().append(clone);
         }
     }
@@ -596,17 +583,13 @@ export default class Instance {
         } else {
             const $tbody = $beanInstanceTableBody.length ? $beanInstanceTableBody : $('#time-table-body');
             if (!$tbody.length) return;
-            const clone = TemplateEngine.clone('tpl-instance-error') || TemplateEngine.clone('tpl-instance-error');
+            const clone = TemplateEngine.clone('tpl-instance-error');
             if (clone) {
                 $(clone).find('[data-field="errorMessage"]').text(`Failed to fetch bean instances: ${errorMessage}`);
                 $tbody.empty().append(clone);
             }
         }
     }
-
-    /* ======================================================================
-       SIDEBAR & DETAILS TELEMETRY
-       ====================================================================== */
 
     async selectBean(contextId, beanName) {
         if (!contextId || !beanName) return;
@@ -670,26 +653,16 @@ export default class Instance {
                 queryParams.toString()
             );
 
-            // Guard against stale response if user switched bean during fetch
-            if (this.selectedContextId !== contextId || this.selectedBeanName !== beanName) {
-                return;
-            }
-
-            if (proxyInfo && (proxyInfo.proxyType || proxyInfo.targetClass || (proxyInfo.advices && proxyInfo.advices.length > 0) || (proxyInfo.proxiedInterfaces && proxyInfo.proxiedInterfaces.length > 0))) {
+            if (proxyInfo) {
                 this.renderProxyInfo(proxyInfo);
             } else {
                 this.renderProxyEmptyState();
             }
         } catch (error) {
-            if (this.selectedContextId !== contextId || this.selectedBeanName !== beanName) {
-                return;
-            }
-            // 404 or missing proxy means direct raw bean instance
+            // 404 not found
             this.renderProxyEmptyState();
         } finally {
-            if (this.selectedContextId === contextId && this.selectedBeanName === beanName) {
-                $timeSidebarProxyLoading.addClass('hidden').hide();
-            }
+            $timeSidebarProxyLoading.addClass('hidden').hide();
         }
     }
 
@@ -884,10 +857,6 @@ export default class Instance {
         }
     }
 
-    /* ======================================================================
-       EVENTS & USER INTERACTIONS
-       ====================================================================== */
-
     initEvents() {
         this._initActionHandlers();
         this._bindSearchInput();
@@ -928,27 +897,8 @@ export default class Instance {
         };
 
         this._filterChangeActions = {
-            'time-filter-duration': (val) => {
-                this.minDurationMs = parseFloat(val) || 0;
-                this.applyLocalFilters();
-                this.renderCurrentView();
-            },
-            'time-filter-created': (val) => {
-                if (val === 'newest') {
-                    this.sortBy = 'createdAt';
-                    this.sortDir = 'DESC';
-                } else if (val === 'oldest') {
-                    this.sortBy = 'createdAt';
-                    this.sortDir = 'ASC';
-                }
-                return this._resetPageAndFetch();
-            },
-            'time-sort-by': (val) => {
-                const [field, dir = 'ASC'] = val.split('_');
-                this.sortBy = field;
-                this.sortDir = dir.toUpperCase();
-                return this._resetPageAndFetch();
-            },
+            'time-filter-duration': (val) => this._handleSortFilter('initDurationNanos', val),
+            'time-filter-created': (val) => this._handleSortFilter('createdAt', val),
             'time-filter-size': (val) => {
                 this.pageSize = parseInt(val, 10) || 20;
                 return this._resetPageAndFetch();
@@ -1032,6 +982,24 @@ export default class Instance {
         });
     }
 
+    _handleSortFilter(field, dir) {
+        if (dir) {
+            this.sortBy = field;
+            this.sortDir = dir;
+        } else {
+            this.sortBy = 'createdAt';
+            this.sortDir = 'ASC';
+        }
+        this._syncSortDropdowns();
+        this._updateSortHeaderIcons();
+        return this._resetPageAndFetch();
+    }
+
+    _syncSortDropdowns() {
+        $('#time-filter-duration').val(this.sortBy === 'initDurationNanos' ? this.sortDir : '');
+        $('#time-filter-created').val(this.sortBy === 'createdAt' ? this.sortDir : '');
+    }
+
     _bindSortHeaders() {
         this._on('.th-sortable', 'click', (e) => {
             const $th = $(e.currentTarget);
@@ -1045,6 +1013,7 @@ export default class Instance {
                 this.sortDir = 'ASC';
             }
 
+            this._syncSortDropdowns();
             this._updateSortHeaderIcons();
             this.currentPage = 1;
             this.fetchInstanceData();
@@ -1230,6 +1199,8 @@ export default class Instance {
             $('#time-sort-icon').text('swap_vert');
         }
 
+        this._syncSortDropdowns();
+        this._updateSortHeaderIcons();
         this._resetPageAndFetch();
     }
 
@@ -1346,7 +1317,8 @@ export default class Instance {
         const defaults = {
             '#time-search-input': '',
             '#inst-search-input': '',
-            '#time-filter-created': 'oldest',
+            '#time-filter-created': 'ASC',
+            '#time-filter-duration': '',
             '#time-filter-size': '20',
             '#time-zoom-slider': '1'
         };

@@ -390,29 +390,46 @@
 <template id="tpl-bean-definition-row">
     <tr data-action="select-bean"
         class="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 cursor-pointer transition-colors bean-row group">
-        <!-- Bean Name & Package Subtitle -->
-        <td class="px-5 py-3.5">
-            <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-purple-300 group-hover:bg-primary/10 dark:group-hover:bg-purple-950/40 transition-colors flex-shrink-0"
+        <!-- Bean Name & Subtitle -->
+        <td class="px-5 py-3.5 max-w-xs sm:max-w-sm">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-800/90 border border-gray-200/50 dark:border-slate-700/50 flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:bg-primary/10 dark:group-hover:bg-purple-950/40 group-hover:border-primary/20 transition-all flex-shrink-0 shadow-2xs"
                     data-field="iconContainer">
-                    <span class="material-symbols-outlined text-[16px]" data-field="icon">widgets</span>
+                    <span class="material-symbols-outlined text-[17px]" data-field="icon">widgets</span>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <div class="font-bold text-xs text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate"
-                            data-field="name">-</div>
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="font-mono font-bold text-xs text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate"
+                            data-field="name">-</span>
                         <div class="inline-flex items-center gap-1 flex-shrink-0" data-field="inlineTraits"></div>
                     </div>
-                    <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate"
-                        data-field="packageName">-</div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-slate-400 font-mono truncate mt-0.5">
+                        <span class="text-gray-600 dark:text-slate-300 font-sans font-medium text-[10.5px]" data-field="category">Component</span>
+                        <span class="text-gray-300 dark:text-slate-600 text-[10px]">•</span>
+                        <span class="inline-flex items-center gap-1 text-[10.5px] text-gray-600 dark:text-slate-300" title="Dependencies (what this bean depends on)">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-2xs"></span>
+                            <span data-field="depCount">0 deps</span>
+                        </span>
+                        <span class="text-gray-300 dark:text-slate-600 text-[10px]">•</span>
+                        <span class="inline-flex items-center gap-1 text-[10.5px] text-gray-600 dark:text-slate-300" title="Dependents (beans that depend on this bean)">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-2xs"></span>
+                            <span data-field="usedByCount">0 used by</span>
+                        </span>
+                    </div>
                 </div>
             </div>
         </td>
 
-        <!-- Type -->
+        <!-- Type & Package -->
         <td class="px-5 py-3.5 max-w-xs">
-            <span class="font-mono text-xs text-gray-600 dark:text-gray-300 truncate block" data-field="type"
-                title="">-</span>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="font-mono font-semibold text-xs text-gray-800 dark:text-gray-200 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate"
+                        data-field="type">-</span>
+                </div>
+                <div class="text-[11px] text-gray-500 dark:text-slate-400 font-mono truncate mt-0.5"
+                    data-field="packageName" title="">-</div>
+            </div>
         </td>
 
         <!-- Scope -->

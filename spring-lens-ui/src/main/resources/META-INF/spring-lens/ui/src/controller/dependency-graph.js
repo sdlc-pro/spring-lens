@@ -1462,7 +1462,6 @@ export default class DependencyGraph {
         return {
             'btn-expand': () => this._mutateTreeNodes(node => node.children = node._children),
             'btn-collapse': () => this._mutateTreeNodes(node => { if (node.depth > 0) node.children = null; }),
-            'btn-reset': () => this._mutateTreeNodes(node => node.children = node.depth === 0 ? node._children : null),
             'btn-control-zoom-in': () => this.zoomBy(1.25),
             'btn-control-zoom-out': () => this.zoomBy(0.8),
             'btn-control-fit': () => this.fitView(),
