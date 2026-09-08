@@ -1,5 +1,5 @@
-import httpClient from '../../client/http-client.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
+import httpClient from '../helper/http-client.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
 import {
     resolveBeanMetadata,
     resolveLatencyTheme,
@@ -13,9 +13,9 @@ import {
     BeanSearchEngine,
     PageHeader,
     debounce
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
-export default class DashboardController {
+export default class Dashboard {
 
     constructor(ENDPOINTS = {}, applicationState = null) {
         this.endpoints = {
@@ -28,8 +28,13 @@ export default class DashboardController {
         };
 
         this.applicationState = applicationState;
-        this.applicationState?.onStateChange((isLive) => {
-            this.renderUptimeStatus(isLive);
+        this.applicationState?.onStateChange((isHealthIsUp) => {
+            const wasDown = this.currentUptimeState === false;
+            this.renderUptimeStatus(isHealthIsUp);
+
+            if (isHealthIsUp && wasDown) {
+                this.loadAllDashboardData();
+            }
         });
 
         this.applicationData = null;
@@ -68,7 +73,7 @@ export default class DashboardController {
             this._bindEventListeners();
             await this.loadAllDashboardData();
         } catch (error) {
-            console.error('Failed to initialize DashboardController:', error);
+            console.error('Failed to initialize Dashboard:', error);
         }
     }
 
@@ -191,7 +196,7 @@ export default class DashboardController {
     async loadAllDashboardData() {
         await Promise.allSettled([
             this.applicationState?.checkHealth()
-                .then(isLive => this.renderUptimeStatus(isLive)),
+                .then(isHealthIsUp => this.renderUptimeStatus(isHealthIsUp)),
 
             httpClient.get(this.endpoints.application)
                 .then(data => this.renderApplicationInfo(this.applicationData = data))
@@ -643,13 +648,13 @@ export default class DashboardController {
             $bar.addClass(theme.bar);
             $badge.addClass(theme.badge);
 
-            // Click to navigate to timeline
+            // Click to navigate to instances
             $row.on('click', () => {
                 if (item.beanName) {
                     const query = QueryParam.build({ search: item.beanName, contextId: item.contextId || '' }).toString();
-                    window.location.hash = `#/timeline?${query}`;
+                    window.location.hash = `#/instances?${query}`;
                 } else {
-                    window.location.hash = '#/timeline';
+                    window.location.hash = '#/instances';
                 }
             });
 
@@ -879,12 +884,12 @@ export default class DashboardController {
                     window.location.hash = `#/graph?${q}`;
                 });
 
-                // Inst button -> Instance Timeline page with URL params
+                // Inst button -> Bean Instances page with URL params
                 $chip.find('.btn-goto-inst').on('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     const q = QueryParam.build({ search: beanName, contextId }).toString();
-                    window.location.hash = `#/timeline?${q}`;
+                    window.location.hash = `#/instances?${q}`;
                 });
 
                 fragment.appendChild(clone);

@@ -1,16 +1,15 @@
-import httpClient from '../../client/http-client.js';
+import httpClient from '../helper/http-client.js';
 import {
     CSS_CLASSES,
     CONDITION_STATUS_THEMES,
     TemplateEngine,
     QueryParam,
     Pagination,
-    BeanSearchEngine,
     debounce
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
 
-export default class ConditionalEvaluationController{
+export default class ConditionalReport {
 
     constructor(endpoints = {}) {
         this.conditionEvaluationApiUrl = endpoints.CONDITIONAL_REPORTS;
@@ -98,7 +97,7 @@ export default class ConditionalEvaluationController{
                 this.fetchConditionEvaluationData()
             ]);
         } catch (error) {
-            console.error('Error entering ConditionalEvaluationController:', error);
+            console.error('Error entering ConditionalReport:', error);
         }
     }
 

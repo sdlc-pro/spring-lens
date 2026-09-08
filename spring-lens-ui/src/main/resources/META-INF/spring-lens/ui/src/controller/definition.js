@@ -1,14 +1,14 @@
-import httpClient from '../../client/http-client.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
-import beanDataStore from '../../storage/bean-data-store.js';
+import httpClient from '../helper/http-client.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
+import beanDataStore from '../helper/bean-data-store.js';
 import {
     tree, tbLink, lrLink, capitalize, formatPercentage, resolveBeanMetadata, resolveScopeStyle, resolveScopeBadgeClass, NH, RX, NW,
     ICON, GAP_X, GAP_Y, CSS_CLASSES, ROLE_COLORS, SCOPE_COLORS, ZOOM_SCALE_EXTENT, GRAPH_NODE_THEMES, GRAPH_NODE_THEMES_TINT,
     GRAPH_NODE_THEMES_BADGE, LOADING_MODE_COLORS, CONTEXT_THEME_COLORS, downloadJson, TemplateEngine, QueryParam, Pagination, Sidebar,
-    ToastNotification, BeanSearchEngine, debounce
-} from '../../utils/index.js';
+    ToastNotification, BeanSearchEngine, debounce, resolveBeanLayer
+} from '../helper/index.js';
 
-export default class BeanDefinitionsController {
+export default class Definitions {
     // Private State Fields
     _hasFetchedTableData = false;
     _debouncedFetchTableData = null;
@@ -515,9 +515,22 @@ export default class BeanDefinitionsController {
         $row.find('[data-field="icon"]').css('color', color).text(icon);
         $row.find('[data-field="name"]').text(beanName).attr('title', beanName);
 
+        // Category Subtitle
+        const layer = resolveBeanLayer(beanInformation);
+        const categoryLabel = layer?.label && layer.label !== 'Other' ? layer.label : 'Component';
+        $row.find('[data-field="category"]').text(categoryLabel);
+
+        // Dependencies & Dependents Counts
+        const deps = Array.isArray(beanInformation.dependencies) ? beanInformation.dependencies : [];
+        const dependents = Array.isArray(beanInformation.dependents) ? beanInformation.dependents : [];
+        const depCountStr = `${deps.length} ${deps.length === 1 ? 'dep' : 'deps'}`;
+        const usedByStr = `${dependents.length} used by`;
+        $row.find('[data-field="depCount"]').text(depCountStr).parent().attr('title', `${deps.length} dependencies (Depends on)`);
+        $row.find('[data-field="usedByCount"]').text(usedByStr).parent().attr('title', `${dependents.length} dependents (Used by)`);
+
         // Package Name Subtitle
         const pkg = type && type.includes('.') ? type.substring(0, type.lastIndexOf('.')) : '';
-        $row.find('[data-field="packageName"]').text(pkg || 'default package');
+        $row.find('[data-field="packageName"]').text(pkg || 'default package').attr('title', pkg || '');
 
         // Type
         const shortType = type && type.includes('.') ? type.substring(type.lastIndexOf('.') + 1) : (type || '-');

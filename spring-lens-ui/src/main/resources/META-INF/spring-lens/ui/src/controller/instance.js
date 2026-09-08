@@ -1,16 +1,31 @@
-import httpClient from '../../client/http-client.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
-import beanDataStore from '../../storage/bean-data-store.js';
+import httpClient from '../helper/http-client.js';
+import beanDataStore from '../helper/bean-data-store.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
 import {
-    capitalize, resolveBeanMetadata, resolveScopeBadgeClass, downloadJson,
-    TemplateEngine, QueryParam, Pagination, debounce,
-    formatDuration, resolveDurationColor, resolveBeanLayer,
-    calculateTimeTicks, formatTickLabel,
-    resolveProxyBadgeStyles, resolveAdviceFrozenClass, resolveDefinitionStatusBadgeClass, resolveTabButtonClass,
-    ALL_PROXY_PILL_CLASSES, ALL_PROXY_TAB_CLASSES, ALL_ADVICE_FROZEN_CLASSES, ALL_DEFINITION_STATUS_CLASSES, ALL_TAB_BUTTON_CLASSES
-} from '../../utils/index.js';
+    ALL_ADVICE_FROZEN_CLASSES,
+    ALL_DEFINITION_STATUS_CLASSES,
+    ALL_PROXY_PILL_CLASSES,
+    ALL_PROXY_TAB_CLASSES,
+    ALL_TAB_BUTTON_CLASSES,
+    calculateTimeTicks,
+    capitalize,
+    debounce,
+    downloadJson,
+    formatDuration,
+    Pagination,
+    QueryParam,
+    resolveAdviceFrozenClass,
+    resolveBeanLayer,
+    resolveBeanMetadata,
+    resolveDefinitionStatusBadgeClass,
+    resolveDurationColor,
+    resolveProxyBadgeStyles,
+    resolveScopeBadgeClass,
+    resolveTabButtonClass,
+    TemplateEngine
+} from '../helper/index.js';
 
-export default class TimelineController {
+export default class Instance {
     constructor(endpoints = {}) {
         this.instances = [];
         this.filteredInstances = [];
@@ -23,7 +38,7 @@ export default class TimelineController {
         this.quickFilter = 'all'; // 'all', 'bottlenecks', 'slow', 'fast'
         this.sortBy = 'createdAt';
         this.sortDir = 'ASC';
-        this.activeView = 'timeline'; // 'timeline' or 'table'
+        this.activeView = 'instance'; // 'instance' or 'table'
         this.activeSidebarTab = 'telemetry'; // 'telemetry' or 'proxy'
         this.zoomLevel = 1;
 
@@ -78,7 +93,7 @@ export default class TimelineController {
                 }
             }
         } catch (error) {
-            console.error('Error in TimelineController enter:', error);
+            console.error('Error in Instance enter:', error);
         }
     }
 
@@ -105,8 +120,8 @@ export default class TimelineController {
             totalCreatedInstances = 0,
             instancesWithDefinition = 0,
             instancesWithoutDefinition = 0,
-            totalInitializationDurationNanos = 0,
             maxInitializationDurationNanos = 0,
+            totalInitializationDurationNanos = 0,
             averageInitializationDurationNanos = 0
         } = summaryData;
 
@@ -141,12 +156,12 @@ export default class TimelineController {
             );
 
             this.processPaginatedResponse(responseData, append);
-            this.computeTimelineMetrics();
+            this.computeInstanceMetrics();
             this.applyLocalFilters();
             this._populateContextDropdown();
             this.renderCurrentView();
         } catch (error) {
-            console.error('Error fetching bean instance timeline data:', error);
+            console.error('Error fetching bean instance data:', error);
             this.renderErrorState(error.message || 'Unknown network error');
         }
     }
@@ -197,7 +212,7 @@ export default class TimelineController {
         return resolveBeanLayer(bean);
     }
 
-    computeTimelineMetrics() {
+    computeInstanceMetrics() {
         if (!this.instances || this.instances.length === 0) {
             this.maxTimeMs = 10;
             this.maxDurationNanos = 0;
@@ -232,12 +247,12 @@ export default class TimelineController {
         if (this.quickFilter === 'bottlenecks') {
             result = result.filter(inst => {
                 const dur = this.getDurationColor(inst.initDurationNanos, this.maxDurationNanos);
-                return dur.tier === 'bottleneck' || dur.tier === 'heavy' || dur.isBottleneck;
+                return dur.isBottleneck || dur.tier === 'bottleneck';
             });
         } else if (this.quickFilter === 'slow') {
             result = result.filter(inst => {
                 const dur = this.getDurationColor(inst.initDurationNanos, this.maxDurationNanos);
-                return dur.tier === 'slow' || dur.tier === 'elevated' || dur.tier === 'notable';
+                return dur.tier === 'high' || dur.tier === 'medium' || dur.tier === 'heavy' || dur.tier === 'slow' || dur.tier === 'elevated' || dur.tier === 'notable';
             });
         } else if (this.quickFilter === 'fast') {
             result = result.filter(inst => {
@@ -256,21 +271,17 @@ export default class TimelineController {
     }
 
     renderCurrentView() {
-        if (this.activeView === 'timeline') {
-            $('#timeline-gantt-card').removeClass('hidden');
-            $('#timeline-table-card').addClass('hidden');
+        if (this.activeView === 'instance') {
+            $('#instance-gantt-card').removeClass('hidden');
+            $('#instance-table-card').addClass('hidden');
             this.renderGanttView();
         } else {
-            $('#timeline-gantt-card').addClass('hidden');
-            $('#timeline-table-card').removeClass('hidden');
+            $('#instance-gantt-card').addClass('hidden');
+            $('#instance-table-card').removeClass('hidden');
             this.renderTableRows();
             this.renderPagination();
         }
     }
-
-    /* ======================================================================
-       GANTT WATERFALL RENDERING
-       ====================================================================== */
 
     renderGanttView() {
         this.renderTimeRulerAndGrid();
@@ -279,8 +290,8 @@ export default class TimelineController {
     }
 
     renderTimeRulerAndGrid() {
-        const $ruler = $('#timeline-ruler-ticks');
-        const $grid = $('#timeline-grid-lines');
+        const $ruler = $('#instance-ruler-ticks');
+        const $grid = $('#instance-grid-lines');
         if (!$ruler.length || !$grid.length) return;
 
         $ruler.empty();
@@ -295,7 +306,7 @@ export default class TimelineController {
             if (pct > 100) return;
 
             // 1. Tick container on ruler
-            const tickClone = TemplateEngine.clone('tpl-timeline-ruler-tick');
+            const tickClone = TemplateEngine.clone('tpl-instance-ruler-tick');
             if (tickClone?.firstElementChild) {
                 const $tick = $(tickClone.firstElementChild);
                 $tick.css('left', `${pct}%`);
@@ -314,7 +325,7 @@ export default class TimelineController {
             }
 
             // 2. Vertical dashed/dotted grid line
-            const gridClone = TemplateEngine.clone('tpl-timeline-grid-line');
+            const gridClone = TemplateEngine.clone('tpl-instance-grid-line');
             if (gridClone?.firstElementChild) {
                 const $gridLine = $(gridClone.firstElementChild);
                 $gridLine.css('left', `calc(${pct}% + 340px)`);
@@ -337,19 +348,15 @@ export default class TimelineController {
         return calculateTimeTicks(maxMs);
     }
 
-    _formatTickLabel(ms) {
-        return formatTickLabel(ms);
-    }
-
     renderGanttRows() {
-        const $container = $('#timeline-waterfall-rows');
+        const $container = $('#instance-waterfall-rows');
         if (!$container.length) return;
 
         // Keep grid overlay and scrubber needle, remove previous rows / loading spinner
-        $container.children().not('#timeline-grid-lines, #timeline-scrubber-needle').remove();
+        $container.children().not('#instance-grid-lines, #instance-scrubber-needle').remove();
 
         if (!this.filteredInstances || this.filteredInstances.length === 0) {
-            const emptyClone = TemplateEngine.clone('tpl-timeline-empty');
+            const emptyClone = TemplateEngine.clone('tpl-instance-empty');
             if (emptyClone) $container.append(emptyClone);
             return;
         }
@@ -369,7 +376,7 @@ export default class TimelineController {
         if (!clone?.firstElementChild) return null;
 
         const $row = $(clone.firstElementChild);
-        const { beanName, contextId, initDurationMs = 0, initDurationNanos = 0, relativeStartMs = 0, layer, scope } = inst;
+        const { beanName, contextId, initDurationMs = 0, initDurationNanos = 0, layer } = inst;
 
         const isSelected = (this.selectedBeanName === beanName) && (this.selectedContextId === contextId);
         if (isSelected) {
@@ -457,10 +464,6 @@ export default class TimelineController {
         $('#time-loaded-summary-text').text(`Showing ${currentCount.toLocaleString()} of ${totalElements.toLocaleString()} instances (max latency ${this.formatDuration((this.maxTimeMs || 0) * 1e6)})`);
     }
 
-    /* ======================================================================
-       TABLE VIEW RENDERING (Matching Instances Table)
-       ====================================================================== */
-
     renderTableRows() {
         const $tbody = $('#beanInstanceTableBody').length ? $('#beanInstanceTableBody') : $('#time-table-body');
         if (!$tbody.length) return;
@@ -468,7 +471,7 @@ export default class TimelineController {
         $tbody.empty();
 
         if (!this.filteredInstances || this.filteredInstances.length === 0) {
-            const emptyClone = TemplateEngine.clone('tpl-instance-empty') || TemplateEngine.clone('tpl-timeline-empty');
+            const emptyClone = TemplateEngine.clone('tpl-instance-empty');
             if (emptyClone) $tbody.append(emptyClone);
             return;
         }
@@ -484,7 +487,7 @@ export default class TimelineController {
     }
 
     _createTableRowNode(inst) {
-        const clone = TemplateEngine.clone('tpl-instance-row') || TemplateEngine.clone('tpl-timeline-row');
+        const clone = TemplateEngine.clone('tpl-instance-row');
         if (!clone?.firstElementChild) return null;
 
         const $row = $(clone.firstElementChild);
@@ -553,15 +556,15 @@ export default class TimelineController {
     renderLoadingState() {
         const $beanInstanceTableBody = $('#beanInstanceTableBody');
 
-        if (this.activeView === 'timeline') {
-            const $container = $('#timeline-waterfall-rows');
-            $container.children().not('#timeline-grid-lines, #timeline-scrubber-needle').remove();
-            const clone = TemplateEngine.clone('tpl-timeline-loading');
+        if (this.activeView === 'instance') {
+            const $container = $('#instance-waterfall-rows');
+            $container.children().not('#instance-grid-lines, #instance-scrubber-needle').remove();
+            const clone = TemplateEngine.clone('tpl-instance-loading');
             if (clone) $container.append(clone);
         } else {
             const $tbody = $beanInstanceTableBody.length ? $beanInstanceTableBody : $('#time-table-body');
             if (!$tbody.length) return;
-            const clone = TemplateEngine.clone('tpl-instance-loading') || TemplateEngine.clone('tpl-timeline-loading');
+            const clone = TemplateEngine.clone('tpl-instance-loading');
             if (clone) $tbody.empty().append(clone);
         }
     }
@@ -569,18 +572,18 @@ export default class TimelineController {
     renderErrorState(errorMessage) {
         const $beanInstanceTableBody = $('#beanInstanceTableBody');
 
-        if (this.activeView === 'timeline') {
-            const $container = $('#timeline-waterfall-rows');
-            $container.children().not('#timeline-grid-lines, #timeline-scrubber-needle').remove();
-            const clone = TemplateEngine.clone('tpl-timeline-error');
+        if (this.activeView === 'instance') {
+            const $container = $('#instance-waterfall-rows');
+            $container.children().not('#instance-grid-lines, #instance-scrubber-needle').remove();
+            const clone = TemplateEngine.clone('tpl-instance-error');
             if (clone) {
-                $(clone).find('[data-field="errorMessage"]').text(`Failed to fetch bean timeline: ${errorMessage}`);
+                $(clone).find('[data-field="errorMessage"]').text(`Failed to fetch bean instance: ${errorMessage}`);
                 $container.append(clone);
             }
         } else {
             const $tbody = $beanInstanceTableBody.length ? $beanInstanceTableBody : $('#time-table-body');
             if (!$tbody.length) return;
-            const clone = TemplateEngine.clone('tpl-instance-error') || TemplateEngine.clone('tpl-timeline-error');
+            const clone = TemplateEngine.clone('tpl-instance-error');
             if (clone) {
                 $(clone).find('[data-field="errorMessage"]').text(`Failed to fetch bean instances: ${errorMessage}`);
                 $tbody.empty().append(clone);
@@ -588,19 +591,15 @@ export default class TimelineController {
         }
     }
 
-    /* ======================================================================
-       SIDEBAR & DETAILS TELEMETRY
-       ====================================================================== */
-
     async selectBean(contextId, beanName) {
         if (!contextId || !beanName) return;
 
         this.selectedContextId = contextId;
         this.selectedBeanName = beanName;
 
-        $('.waterfall-row, .timeline-table-row').removeClass('gantt-row-selected bg-primary/10 dark:bg-purple-950/30 border-l-4 border-primary font-semibold');
+        $('.waterfall-row, .instance-table-row').removeClass('gantt-row-selected bg-primary/10 dark:bg-purple-950/30 border-l-4 border-primary font-semibold');
         $(`.waterfall-row[data-context-id="${contextId}"][data-bean-name="${beanName}"]`).addClass('gantt-row-selected');
-        $(`.timeline-table-row[data-context-id="${contextId}"][data-bean-name="${beanName}"]`).addClass('bg-primary/10 dark:bg-purple-950/30 font-semibold');
+        $(`.instance-table-row[data-context-id="${contextId}"][data-bean-name="${beanName}"]`).addClass('bg-primary/10 dark:bg-purple-950/30 font-semibold');
 
         const localInstance = this.instances.find(i => i.contextId === contextId && i.beanName === beanName);
         if (localInstance) {
@@ -654,26 +653,16 @@ export default class TimelineController {
                 queryParams.toString()
             );
 
-            // Guard against stale response if user switched bean during fetch
-            if (this.selectedContextId !== contextId || this.selectedBeanName !== beanName) {
-                return;
-            }
-
-            if (proxyInfo && (proxyInfo.proxyType || proxyInfo.targetClass || (proxyInfo.advices && proxyInfo.advices.length > 0) || (proxyInfo.proxiedInterfaces && proxyInfo.proxiedInterfaces.length > 0))) {
+            if (proxyInfo) {
                 this.renderProxyInfo(proxyInfo);
             } else {
                 this.renderProxyEmptyState();
             }
         } catch (error) {
-            if (this.selectedContextId !== contextId || this.selectedBeanName !== beanName) {
-                return;
-            }
-            // 404 or missing proxy means direct raw bean instance
+            // 404 not found
             this.renderProxyEmptyState();
         } finally {
-            if (this.selectedContextId === contextId && this.selectedBeanName === beanName) {
-                $timeSidebarProxyLoading.addClass('hidden').hide();
-            }
+            $timeSidebarProxyLoading.addClass('hidden').hide();
         }
     }
 
@@ -868,10 +857,6 @@ export default class TimelineController {
         }
     }
 
-    /* ======================================================================
-       EVENTS & USER INTERACTIONS
-       ====================================================================== */
-
     initEvents() {
         this._initActionHandlers();
         this._bindSearchInput();
@@ -912,27 +897,8 @@ export default class TimelineController {
         };
 
         this._filterChangeActions = {
-            'time-filter-duration': (val) => {
-                this.minDurationMs = parseFloat(val) || 0;
-                this.applyLocalFilters();
-                this.renderCurrentView();
-            },
-            'time-filter-created': (val) => {
-                if (val === 'newest') {
-                    this.sortBy = 'createdAt';
-                    this.sortDir = 'DESC';
-                } else if (val === 'oldest') {
-                    this.sortBy = 'createdAt';
-                    this.sortDir = 'ASC';
-                }
-                return this._resetPageAndFetch();
-            },
-            'time-sort-by': (val) => {
-                const [field, dir = 'ASC'] = val.split('_');
-                this.sortBy = field;
-                this.sortDir = dir.toUpperCase();
-                return this._resetPageAndFetch();
-            },
+            'time-filter-duration': (val) => this._handleSortFilter('initDurationNanos', val),
+            'time-filter-created': (val) => this._handleSortFilter('createdAt', val),
             'time-filter-size': (val) => {
                 this.pageSize = parseInt(val, 10) || 20;
                 return this._resetPageAndFetch();
@@ -974,8 +940,7 @@ export default class TimelineController {
     }
 
     _handleQuickFilter($target) {
-        const filter = $target.data('filter') || 'all';
-        this.quickFilter = filter;
+        this.quickFilter = $target.data('filter') || 'all';
 
         $('.time-quick-filter-btn')
             .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
@@ -1017,6 +982,24 @@ export default class TimelineController {
         });
     }
 
+    _handleSortFilter(field, dir) {
+        if (dir) {
+            this.sortBy = field;
+            this.sortDir = dir;
+        } else {
+            this.sortBy = 'createdAt';
+            this.sortDir = 'ASC';
+        }
+        this._syncSortDropdowns();
+        this._updateSortHeaderIcons();
+        return this._resetPageAndFetch();
+    }
+
+    _syncSortDropdowns() {
+        $('#time-filter-duration').val(this.sortBy === 'initDurationNanos' ? this.sortDir : '');
+        $('#time-filter-created').val(this.sortBy === 'createdAt' ? this.sortDir : '');
+    }
+
     _bindSortHeaders() {
         this._on('.th-sortable', 'click', (e) => {
             const $th = $(e.currentTarget);
@@ -1030,6 +1013,7 @@ export default class TimelineController {
                 this.sortDir = 'ASC';
             }
 
+            this._syncSortDropdowns();
             this._updateSortHeaderIcons();
             this.currentPage = 1;
             this.fetchInstanceData();
@@ -1089,19 +1073,19 @@ export default class TimelineController {
         $('#time-zoom-level-badge').text(`${pct}%`);
 
         const widthPercent = this.zoomLevel * 100;
-        $('#timeline-inner-container').css('min-width', `${widthPercent}%`);
+        $('#instance-inner-container').css('min-width', `${widthPercent}%`);
         this.renderTimeRulerAndGrid();
     }
 
     _bindScrubberEvents() {
-        const $scrollContainer = $('#timeline-scroll-container');
-        const $waterfallRows = $('#timeline-waterfall-rows');
-        const $needle = $('#timeline-scrubber-needle');
-        const $badge = $('#timeline-scrubber-badge');
+        const $scrollContainer = $('#instance-scroll-container');
+        const $waterfallRows = $('#instance-waterfall-rows');
+        const $needle = $('#instance-scrubber-needle');
+        const $badge = $('#instance-scrubber-badge');
 
         const updateScrubberPosition = (e) => {
             if (!e) return;
-            const $inner = $('#timeline-inner-container');
+            const $inner = $('#instance-inner-container');
             const offset = $inner.offset();
             const rowsOffset = $waterfallRows.offset();
             if (!offset || !rowsOffset) return;
@@ -1175,11 +1159,11 @@ export default class TimelineController {
     }
 
     _handleSwitchView($target) {
-        const view = $target.data('view') || 'timeline';
+        const view = $target.data('view') || 'instance';
         this.activeView = view;
 
-        if (view === 'timeline') {
-            $('#time-view-btn-timeline')
+        if (view === 'instance') {
+            $('#time-view-btn-instance')
                 .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
                 .removeClass('text-gray-500 dark:text-gray-400 font-medium');
             $('#time-view-btn-table')
@@ -1189,7 +1173,7 @@ export default class TimelineController {
             $('#time-view-btn-table')
                 .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
                 .removeClass('text-gray-500 dark:text-gray-400 font-medium');
-            $('#time-view-btn-timeline')
+            $('#time-view-btn-instance')
                 .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
                 .addClass('text-gray-500 dark:text-gray-400 font-medium');
         }
@@ -1215,6 +1199,8 @@ export default class TimelineController {
             $('#time-sort-icon').text('swap_vert');
         }
 
+        this._syncSortDropdowns();
+        this._updateSortHeaderIcons();
         this._resetPageAndFetch();
     }
 
@@ -1283,7 +1269,7 @@ export default class TimelineController {
         this.selectedBeanName = null;
         this.selectedContextId = null;
         this.selectedBeanInstance = null;
-        $('.waterfall-row, .timeline-table-row').removeClass('gantt-row-selected bg-primary/10 dark:bg-purple-950/30 font-semibold');
+        $('.waterfall-row, .instance-table-row').removeClass('gantt-row-selected bg-primary/10 dark:bg-purple-950/30 font-semibold');
 
         if (!$sidebar.length) return;
 
@@ -1292,7 +1278,7 @@ export default class TimelineController {
     }
 
     _on(target, event, delegateOrHandler, maybeHandler) {
-        const namespace = '.timelineController';
+        const namespace = '.instanceController';
         const namespacedEvent = `${event}${namespace}`;
         const $target = $(target);
 
@@ -1318,7 +1304,7 @@ export default class TimelineController {
             sortBy: 'createdAt',
             sortDir: 'ASC',
             zoomLevel: 1,
-            activeView: 'timeline',
+            activeView: 'instance',
             activeSidebarTab: 'telemetry',
             selectedBeanName: null,
             selectedContextId: null,
@@ -1331,7 +1317,8 @@ export default class TimelineController {
         const defaults = {
             '#time-search-input': '',
             '#inst-search-input': '',
-            '#time-filter-created': 'oldest',
+            '#time-filter-created': 'ASC',
+            '#time-filter-duration': '',
             '#time-filter-size': '20',
             '#time-zoom-slider': '1'
         };
@@ -1342,15 +1329,15 @@ export default class TimelineController {
         $('#time-sort-icon').text('swap_vert');
         $('#time-zoom-level-badge').text('100%');
 
-        // Reset View Toggle buttons & Card containers to default Timeline view
-        $('#time-view-btn-timeline')
+        // Reset View Toggle buttons & Card containers to default instance view
+        $('#time-view-btn-instance')
             .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
             .removeClass('text-gray-500 dark:text-gray-400 font-medium');
         $('#time-view-btn-table')
             .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
             .addClass('text-gray-500 dark:text-gray-400 font-medium');
-        $('#timeline-gantt-card').removeClass('hidden');
-        $('#timeline-table-card').addClass('hidden');
+        $('#instance-gantt-card').removeClass('hidden');
+        $('#instance-table-card').addClass('hidden');
 
         $('.time-quick-filter-btn')
             .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
@@ -1362,21 +1349,21 @@ export default class TimelineController {
 
     _downloadReport() {
         const reportData = {
-            title: 'SpringLens Bean Instantiation Timeline Report',
+            title: 'SpringLens Bean Instantiation Report',
             timestamp: new Date().toISOString(),
             summary: this.instanceSummary,
             totalElements: this.paginationState.totalElements,
             instances: this.instances
         };
 
-        downloadJson(`spring-lens-timeline-${Date.now()}.json`, reportData);
+        downloadJson(`spring-lens-instance-${Date.now()}.json`, reportData);
     }
 
     /**
      * Helper for namespaced event binding.
      * @private
      */
-    _on(target, event, delegateOrHandler, maybeHandler, namespace = '.timelineController') {
+    _on(target, event, delegateOrHandler, maybeHandler, namespace = '.instanceController') {
         const namespacedEvent = `${event}${namespace}`;
         const $target = $(target);
 
@@ -1391,8 +1378,8 @@ export default class TimelineController {
         this._handleCloseSidebar(true);
         this._resetFilterState();
         this._debouncedSearch?.cancel();
-        $(document).off('.timelineController');
-        $(window).off('.timelineController');
-        $('#time-search-input, #inst-search-input, #time-zoom-slider, #time-filter-created, #time-filter-size, #timeline-scroll-container, #time-filter-duration, #time-sort-by, #time-details-sidebar').off('.timelineController');
+        $(document).off('.instanceController');
+        $(window).off('.instanceController');
+        $('#time-search-input, #inst-search-input, #time-zoom-slider, #time-filter-created, #time-filter-size, #instance-scroll-container, #time-filter-duration, #time-sort-by, #time-details-sidebar').off('.instanceController');
     }
 }

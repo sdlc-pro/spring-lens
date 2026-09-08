@@ -1,12 +1,12 @@
-import ENDPOINTS from './src/config/api-endpoints.js';
-import Route from './src/route/route.js';
-import BeanDefinitions from './src/controller/bean/definition-controller.js';
-import TimelineController from './src/controller/bean/timeline-controller.js';
-import DashboardController from './src/controller/dashboard/dashboard-controller.js';
-import GraphController from './src/controller/bean/graph-controller.js';
-import ConditionalEvaluationController from './src/controller/bean/conditional-evalugation-controller.js';
-import ApplicationState from './src/controller/application/application-state.js';
-import { PageHeader } from './src/utils/index.js';
+import Route from './src/helper/route.js';
+import { PageHeader } from './src/helper/index.js';
+import Instance from './src/controller/instance.js';
+import ENDPOINTS from './src/helper/api-endpoints.js';
+import Dashboard from './src/controller/dashboard.js';
+import BeanDefinitions from './src/controller/definition.js';
+import DependencyGraph from './src/controller/dependency-graph.js';
+import ConditionalReport from './src/controller/conditional-report.js';
+import ApplicationState from './src/controller/application-state.js';
 
 $(document).ready(() => {
 
@@ -16,18 +16,18 @@ $(document).ready(() => {
     });
     PageHeader.init(applicationState);
 
-    const dashboard = new DashboardController(ENDPOINTS, applicationState);
+    const dashboard = new Dashboard(ENDPOINTS, applicationState);
+    const beanInstance = new Instance(ENDPOINTS);
     const beanDefinitions = new BeanDefinitions(ENDPOINTS);
-    const beanDependencyGraph = new GraphController(ENDPOINTS);
-    const beanInstance = new TimelineController(ENDPOINTS);
-    const conditionEvaluation = new ConditionalEvaluationController(ENDPOINTS);
+    const conditionReport = new ConditionalReport(ENDPOINTS);
+    const dependencyGraph = new DependencyGraph(ENDPOINTS);
 
     const appRouter = new Route({
         container: '#main-content',
         defaultRoute: 'dashboard',
         routes: {
             'dashboard': {
-                template: 'main-dashboard',
+                template: 'dashboard/dashboard',
                 header: {
                     icon: 'dashboard',
                     title: 'Platform Overview',
@@ -70,36 +70,38 @@ $(document).ready(() => {
                     icon: 'fact_check',
                     title: 'Condition Reports',
                     badge: 'Auto-Configuration',
-                    breadcrumbs: ['Bean', 'Conditional Beans Evaluation'],
+                    breadcrumbs: ['Bean', 'Conditional Reports'],
                     actions: [
                         { id: 'condition-btn-refresh', action: 'refresh-data', icon: 'refresh', label: 'Refresh', title: 'Refresh evaluations' },
                         { type: 'search', id: 'condition-search-input', placeholder: 'Search auto-configurations...' }
                     ]
                 },
-                onEnter: (params) => conditionEvaluation.enter(params),
-                onLeave: () => conditionEvaluation.leave()
+                onEnter: (params) => conditionReport.enter(params),
+                onLeave: () => conditionReport.leave()
             },
-            'timeline': {
-                template: 'bean/timeline-chart',
+            'instances': {
+                template: 'bean/instances',
                 header: {
-                    icon: 'timeline',
+                    icon: 'timelapse',
                     title: 'Bean Instances',
                     badge: 'Startup Waterfall & Profiler',
-                    breadcrumbs: ['Bean', 'Timeline Chart'],
+                    breadcrumbs: ['Bean', 'Instances'],
                     actions: [
-                        { id: 'time-btn-refresh', action: 'refresh-data', icon: 'refresh', label: 'Refresh', title: 'Refresh bean timeline data' },
-                        { id: 'time-btn-download', action: 'download-report', icon: 'file_download', label: 'Export', title: 'Export bean timeline as JSON' }
+                        { id: 'time-btn-refresh', action: 'refresh-data', icon: 'refresh', label: 'Refresh', title: 'Refresh bean instance data' },
+                        { id: 'time-btn-download', action: 'download-report', icon: 'file_download', label: 'Export', title: 'Export bean instance as JSON' }
                     ]
                 },
                 onEnter: (params) => beanInstance.enter(params),
                 onLeave: () => beanInstance.leave()
             },
+            'instance': { redirectTo: 'instances' },
+            'timeline': { redirectTo: 'instances' },
             'graph': {
                 template: 'bean/graph',
                 title: 'Dependency Graph',
                 header: null,
-                onEnter: (params) => beanDependencyGraph.enter(params),
-                onLeave: () => beanDependencyGraph.leave()
+                onEnter: (params) => dependencyGraph.enter(params),
+                onLeave: () => dependencyGraph.leave()
             }
         }
     });

@@ -227,17 +227,19 @@ function formatDuration(nanos) {
  * - 100 - 500 µs (100,000 - 500,000 ns / 0.1ms - 0.5ms) -> Amber (#f59e0b)
  * - 500 µs - 2 ms (500,000 - 2,000,000 ns / 0.5ms - 2ms) -> Warm Orange (#f97316)
  * - 2 ms - 10 ms -> Coral / Rose (#f43f5e)
- * - 10 ms - 50 ms -> Royal Purple / Violet (#8b5cf6)
- * - >= 50 ms (or relative max time) -> Crimson Red (#ef4444)
+ * - 10 ms - 20 ms -> Royal Purple / Violet (#8b5cf6)
+ * - 20 ms - 50 ms -> Amber (#f59e0b)
+ * - 50 ms - 100 ms -> Warm Orange (#f97316)
+ * - >= 100 ms (or relative max time) -> Crimson Red / Bottleneck (#ef4444)
  */
 function resolveDurationColor(initDurationNanos, maxDurationNanos = 0) {
     const nanos = initDurationNanos || 0;
     const ms = nanos / 1e6;
     const maxNanos = maxDurationNanos || 0;
-    const isMaxTime = maxNanos > 0 && nanos >= maxNanos * 0.95 && maxNanos >= 10000;
+    const isMaxTime = maxNanos > 0 && nanos >= maxNanos * 0.95 && maxNanos >= 100000000;
 
-    // 1. Critical Bottleneck / Max Time (>= 50ms or relative max in dataset)
-    if (ms >= 50 || isMaxTime) {
+    // 1. Critical Bottleneck (>= 100ms)
+    if (ms >= 100 || isMaxTime) {
         return {
             color: '#ef4444',
             gradient: 'linear-gradient(135deg, #ef4444e6, #dc2626cc)',
@@ -248,7 +250,31 @@ function resolveDurationColor(initDurationNanos, maxDurationNanos = 0) {
         };
     }
 
-    // 2. Heavy (10ms - 50ms) -> Royal Purple / Violet
+    // 2. High (50ms - 100ms) -> Warm Orange
+    if (ms >= 50) {
+        return {
+            color: '#f97316',
+            gradient: 'linear-gradient(135deg, #f97316e6, #ea580ccc)',
+            glow: 'rgba(249, 115, 22, 0.5)',
+            tier: 'high',
+            isBottleneck: false,
+            badgeClass: 'bg-orange-50 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800/40'
+        };
+    }
+
+    // 3. Medium (20ms - 50ms) -> Amber
+    if (ms >= 20) {
+        return {
+            color: '#f59e0b',
+            gradient: 'linear-gradient(135deg, #f59e0be6, #d97706cc)',
+            glow: 'rgba(245, 158, 11, 0.5)',
+            tier: 'medium',
+            isBottleneck: false,
+            badgeClass: 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40'
+        };
+    }
+
+    // 4. Heavy (10ms - 20ms) -> Royal Purple / Violet
     if (ms >= 10) {
         return {
             color: '#8b5cf6',
@@ -375,7 +401,7 @@ function resolveBeanLayer(bean) {
 }
 
 /**
- * Formats tick label on timeline axis.
+ * Formats tick label on instance axis.
  */
 function formatTickLabel(ms) {
     if (ms === 0) return '0';

@@ -4,7 +4,7 @@
     <div class="flex-1 flex flex-col gap-4 min-w-0 h-full min-h-0 transition-all duration-300 ease-in-out">
 
         <!-- Executive Telemetry Summary Strip (KPIs from beanInstanceSummaryApi) -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 flex-shrink-0" id="timeline-kpi-strip">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 flex-shrink-0" id="instance-kpi-strip">
             <!-- Card 1: Total Created Instances -->
             <div
                 class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between group hover:border-primary/40 transition-all">
@@ -128,8 +128,20 @@
                     <select id="time-filter-created"
                         class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
                         <option value="">Created: All</option>
-                        <option value="oldest">Startup Order (Oldest First)</option>
-                        <option value="newest">Newest First</option>
+                        <option value="ASC">Startup Order (Oldest First)</option>
+                        <option value="DESC">Newest First</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Init Duration Filter Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-duration"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
+                        <option value="">Duration: All</option>
+                        <option value="DESC">Slowest First</option>
+                        <option value="ASC">Fastest First</option>
                     </select>
                     <span
                         class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
@@ -157,12 +169,12 @@
 
             <!-- Right Controls: View Switcher Toggle -->
             <div class="flex items-center gap-2 self-start lg:self-auto flex-shrink-0">
-                <!-- View Switcher Toggle (Timeline vs Table) -->
+                <!-- View Switcher Toggle (instance vs Table) -->
                 <div
                     class="flex items-center bg-gray-100/90 dark:bg-slate-950/90 p-1 rounded-xl border border-gray-200/70 dark:border-slate-800 shadow-2xs">
-                    <button id="time-view-btn-timeline" data-action="switch-view" data-view="timeline"
+                    <button id="time-view-btn-instance" data-action="switch-view" data-view="instance"
                         class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all bg-white dark:bg-slate-800 text-primary dark:text-purple-300 shadow-xs cursor-pointer">
-                        <span class="material-symbols-outlined text-[15px]">waterfall_chart</span> Timeline
+                        <span class="material-symbols-outlined text-[15px]">waterfall_chart</span> Waterfall
                     </button>
                     <button id="time-view-btn-table" data-action="switch-view" data-view="table"
                         class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-all cursor-pointer">
@@ -172,8 +184,8 @@
             </div>
         </div>
 
-        <!-- TIMELINE GANTT VIEW CONTAINER -->
-        <div id="timeline-gantt-card"
+        <!-- instance GANTT VIEW CONTAINER -->
+        <div id="instance-gantt-card"
             class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-xs flex flex-col flex-1 min-h-0 overflow-hidden transition-colors duration-300">
 
             <!-- Subheader: Left Manifest Header & Right Zoom / Precision Controls (Static Subheader) -->
@@ -229,8 +241,8 @@
 
             <!-- Gantt Scroll Area & Waterfall Grid (Scrollable Body) -->
             <div class="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative min-h-0 select-none"
-                id="timeline-scroll-container">
-                <div class="min-w-full inline-block relative" id="timeline-inner-container" style="min-width: 100%;">
+                id="instance-scroll-container">
+                <div class="min-w-full inline-block relative" id="instance-inner-container" style="min-width: 100%;">
 
                     <!-- Dynamic Time Axis / Ruler Row (Sticky Header inside scroll area) -->
                     <div
@@ -243,22 +255,22 @@
                         </div>
                         <!-- Ruler Ticks Container -->
                         <div class="flex-1 relative h-6 text-[10.5px] font-mono font-semibold text-gray-500 dark:text-gray-400 min-w-[500px]"
-                            id="timeline-ruler-ticks">
+                            id="instance-ruler-ticks">
                             <!-- Populated dynamically via JS -->
                         </div>
                     </div>
 
                     <!-- Waterfall Rows Container -->
                     <div class="relative divide-y divide-gray-100/90 dark:divide-slate-800/60"
-                        id="timeline-waterfall-rows">
+                        id="instance-waterfall-rows">
                         <!-- Vertical Dashed Grid Lines Overlay -->
-                        <div class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="timeline-grid-lines">
+                        <div class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="instance-grid-lines">
                             <!-- Dynamic vertical dashed lines -->
                         </div>
 
                         <!-- Scrubber Needle Guide -->
-                        <div class="timeline-scrubber-needle opacity-0" id="timeline-scrubber-needle">
-                            <div class="timeline-scrubber-badge" id="timeline-scrubber-badge">+0.00ms</div>
+                        <div class="instance-scrubber-needle opacity-0" id="instance-scrubber-needle">
+                            <div class="instance-scrubber-badge" id="instance-scrubber-badge">+0.00ms</div>
                         </div>
 
                         <!-- Rows populated dynamically via JS -->
@@ -268,7 +280,7 @@
 
             <!-- Bottom Load More / Remaining count (Static Footer Row) -->
             <div class="px-5 py-2.5 border-t border-gray-100 dark:border-slate-800/80 flex items-center justify-between bg-gray-50/50 dark:bg-slate-950/50 flex-shrink-0 z-10"
-                id="timeline-footer-row">
+                id="instance-footer-row">
                 <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono" id="time-loaded-summary-text">
                     Showing beans in chronological sequence
                 </div>
@@ -319,11 +331,15 @@
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-amber-500"></span>
-                        <span>20-50ms</span>
+                        <span>Medium 20-50ms</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded bg-orange-500"></span>
+                        <span>High 50-100ms</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-rose-500"></span>
-                        <span class="font-bold text-rose-500 dark:text-rose-400">&gt;50ms (Bottleneck)</span>
+                        <span class="font-bold text-rose-500 dark:text-rose-400">&gt;100ms (Bottleneck)</span>
                     </div>
                     <div class="flex items-center gap-1 border-l border-gray-200 dark:border-slate-800 pl-3">
                         <span>Relative to boot</span>
@@ -335,7 +351,7 @@
         </div>
 
         <!-- TABLE VIEW CONTAINER (Hidden by default) -->
-        <div id="timeline-table-card"
+        <div id="instance-table-card"
             class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden transition-colors duration-300 hidden">
 
             <!-- Table Container (Scrollable Table Body) -->
@@ -419,7 +435,7 @@
                 <div class="flex items-center gap-2.5 min-w-0">
                     <div
                         class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 via-purple-500/15 to-transparent text-primary dark:text-purple-300 flex items-center justify-center ring-1 ring-primary/25 shadow-2xs flex-shrink-0">
-                        <span class="material-symbols-outlined text-[18px]">timeline</span>
+                        <span class="material-symbols-outlined text-[18px]">timelapse</span>
                     </div>
                     <div class="min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -511,7 +527,8 @@
                                 class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
                                 <span
                                     class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5 flex-shrink-0">
-                                    <span class="material-symbols-outlined text-[14px] text-blue-500">hub</span> Context ID
+                                    <span class="material-symbols-outlined text-[14px] text-blue-500">hub</span> Context
+                                    ID
                                 </span>
                                 <span
                                     class="font-bold text-[10.5px] font-mono text-gray-800 dark:text-gray-200 truncate max-w-[170px] cursor-default select-all"
@@ -559,7 +576,8 @@
                         <div class="flex items-center justify-between">
                             <h4
                                 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[13px] text-indigo-500">security</span> AOP Proxy Info
+                                <span class="material-symbols-outlined text-[13px] text-indigo-500">security</span> AOP
+                                Proxy Info
                             </h4>
                             <!-- Proxy Type Pill (Shown when proxied) -->
                             <span id="time-sidebar-proxy-type"
@@ -573,15 +591,19 @@
                             <div class="inline-block animate-spin text-indigo-500">
                                 <span class="material-symbols-outlined text-[22px]">progress_activity</span>
                             </div>
-                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-mono">Inspecting proxy metadata...</p>
+                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-mono">Inspecting proxy
+                                metadata...</p>
                         </div>
 
                         <!-- Proxy Available Content -->
                         <div id="time-sidebar-proxy-content" class="hidden space-y-2.5 text-xs">
                             <!-- Target Class -->
-                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
-                                <div class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 mb-1">
-                                    <span class="material-symbols-outlined text-[13px] text-blue-500">code</span> Target Class
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <div
+                                    class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 mb-1">
+                                    <span class="material-symbols-outlined text-[13px] text-blue-500">code</span> Target
+                                    Class
                                 </div>
                                 <div id="time-sidebar-proxy-target-class"
                                     class="font-mono text-[10.5px] text-gray-800 dark:text-gray-200 truncate select-all break-all leading-tight font-medium"
@@ -589,9 +611,12 @@
                             </div>
 
                             <!-- Advice Frozen Status -->
-                            <div class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
-                                <span class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[14px] text-purple-500">lock</span> Advice Frozen
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-purple-500">lock</span>
+                                    Advice Frozen
                                 </span>
                                 <span id="time-sidebar-proxy-frozen"
                                     class="font-bold text-[9.5px] font-mono px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300">
@@ -600,29 +625,39 @@
                             </div>
 
                             <!-- Advices List -->
-                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[13px] text-amber-500">alt_route</span> Advices &amp; Interceptors
+                                    <span
+                                        class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span
+                                            class="material-symbols-outlined text-[13px] text-amber-500">alt_route</span>
+                                        Advices &amp; Interceptors
                                     </span>
                                     <span id="time-sidebar-proxy-advices-count"
                                         class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-300">0</span>
                                 </div>
-                                <div id="time-sidebar-proxy-advices-list" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
+                                <div id="time-sidebar-proxy-advices-list"
+                                    class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
                                     <!-- Rendered dynamically -->
                                 </div>
                             </div>
 
                             <!-- Proxied Interfaces List -->
-                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[13px] text-emerald-500">integration_instructions</span> Proxied Interfaces
+                                    <span
+                                        class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span
+                                            class="material-symbols-outlined text-[13px] text-emerald-500">integration_instructions</span>
+                                        Proxied Interfaces
                                     </span>
                                     <span id="time-sidebar-proxy-interfaces-count"
                                         class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">0</span>
                                 </div>
-                                <div id="time-sidebar-proxy-interfaces-list" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
+                                <div id="time-sidebar-proxy-interfaces-list"
+                                    class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
                                     <!-- Rendered dynamically -->
                                 </div>
                             </div>
@@ -635,8 +670,10 @@
                                 class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/50 mx-auto shadow-2xs mb-2.5">
                                 <span class="material-symbols-outlined text-[20px]">verified_user</span>
                             </div>
-                            <div class="text-[12px] font-bold text-gray-800 dark:text-gray-200">Direct Bean Instance</div>
-                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px] mx-auto mt-1">
+                            <div class="text-[12px] font-bold text-gray-800 dark:text-gray-200">Direct Bean Instance
+                            </div>
+                            <p
+                                class="text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px] mx-auto mt-1">
                                 Raw POJO instance without AOP proxy or CGLIB interceptor wrappers.
                             </p>
                         </div>
@@ -651,10 +688,12 @@
                     class="w-full py-2.5 px-3.5 bg-primary/10 hover:bg-primary/15 active:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/25 text-primary dark:text-purple-300 border border-primary/20 hover:border-primary/35 dark:border-primary/30 rounded-xl text-xs font-bold flex items-center justify-between shadow-2xs hover:shadow-xs transition-all group cursor-pointer"
                     id="time-btn-view-details">
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[17px] text-primary dark:text-purple-300 group-hover:rotate-12 transition-transform">schema</span>
+                        <span
+                            class="material-symbols-outlined text-[17px] text-primary dark:text-purple-300 group-hover:rotate-12 transition-transform">schema</span>
                         <span>Open in Definitions</span>
                     </span>
-                    <span class="material-symbols-outlined text-[16px] text-primary/70 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+                    <span
+                        class="material-symbols-outlined text-[16px] text-primary/70 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
                 </a>
             </div>
         </div>
@@ -663,16 +702,16 @@
 
 <!-- Reusable UI Templates -->
 
-<!-- Timeline Ruler Tick Template -->
-<template id="tpl-timeline-ruler-tick">
+<!-- instance Ruler Tick Template -->
+<template id="tpl-instance-ruler-tick">
     <div class="absolute top-0 bottom-0 pointer-events-none" data-field="tickContainer">
         <div class="ruler-tick-mark" data-field="tickMark"></div>
         <span class="absolute top-0 transform -translate-x-1/2 whitespace-nowrap text-xs" data-field="tickLabel"></span>
     </div>
 </template>
 
-<!-- Timeline Grid Line Template -->
-<template id="tpl-timeline-grid-line">
+<!-- instance Grid Line Template -->
+<template id="tpl-instance-grid-line">
     <div class="absolute inset-y-0 pointer-events-none border-l" data-field="gridLine"></div>
 </template>
 
@@ -681,7 +720,8 @@
     <div class="flex items-center justify-between py-1 px-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800/80 text-[10.5px] font-mono"
         data-field="itemContainer">
         <span class="text-gray-800 dark:text-gray-200 truncate font-medium" data-field="name" title=""></span>
-        <span class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0" data-field="badge"></span>
+        <span class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0"
+            data-field="badge"></span>
     </div>
 </template>
 
@@ -722,7 +762,7 @@
                 data-field="bar">
                 <span class="truncate bar-inner-label" data-field="barLabel"></span>
             </div>
-            <!-- Bottleneck flame badge if > 50ms -->
+            <!-- Bottleneck flame badge if > 100ms -->
             <div class="absolute hidden items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-bold shadow-xs z-10 pointer-events-none"
                 data-field="bottleneckBadge">
                 <span class="material-symbols-outlined text-[11px]">local_fire_department</span>
@@ -831,7 +871,7 @@
     </tr>
 </template>
 
-<template id="tpl-timeline-empty">
+<template id="tpl-waterfall-empty">
     <div class="py-16 text-center text-gray-400 dark:text-gray-500">
         <div class="flex flex-col items-center justify-center gap-2">
             <span class="material-symbols-outlined text-3xl text-gray-300 dark:text-slate-600">hourglass_empty</span>
@@ -841,21 +881,20 @@
     </div>
 </template>
 
-<template id="tpl-timeline-loading">
+<template id="tpl-waterfall-loading">
     <div class="py-16 text-center text-gray-400">
         <div class="flex flex-col items-center justify-center gap-2.5">
             <span class="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent"></span>
-            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Loading bean instance
-                timeline...</span>
+            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Loading bean instances...</span>
         </div>
     </div>
 </template>
 
-<template id="tpl-timeline-error">
+<template id="tpl-waterfall-error">
     <div class="py-12 text-center text-rose-500 dark:text-rose-400">
         <div class="flex items-center justify-center gap-2 text-sm font-bold">
             <span class="material-symbols-outlined text-xl">warning</span>
-            <span data-field="errorMessage">Failed to load bean timeline data</span>
+            <span data-field="errorMessage">Failed to load bean instance data</span>
         </div>
     </div>
 </template>
