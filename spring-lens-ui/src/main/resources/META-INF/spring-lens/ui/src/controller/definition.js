@@ -1,14 +1,14 @@
-import httpClient from '../../client/http-client.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
-import beanDataStore from '../../storage/bean-data-store.js';
+import httpClient from '../helper/http-client.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
+import beanDataStore from '../helper/bean-data-store.js';
 import {
     tree, tbLink, lrLink, capitalize, formatPercentage, resolveBeanMetadata, resolveScopeStyle, resolveScopeBadgeClass, NH, RX, NW,
     ICON, GAP_X, GAP_Y, CSS_CLASSES, ROLE_COLORS, SCOPE_COLORS, ZOOM_SCALE_EXTENT, GRAPH_NODE_THEMES, GRAPH_NODE_THEMES_TINT,
     GRAPH_NODE_THEMES_BADGE, LOADING_MODE_COLORS, CONTEXT_THEME_COLORS, downloadJson, TemplateEngine, QueryParam, Pagination, Sidebar,
     ToastNotification, BeanSearchEngine, debounce
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
-export default class BeanDefinitionsController {
+export default class Definitions {
     // Private State Fields
     _hasFetchedTableData = false;
     _debouncedFetchTableData = null;

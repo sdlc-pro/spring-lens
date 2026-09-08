@@ -246,11 +246,11 @@ g.node.node-focused text.node-text {
 }
 
 /* ==========================================================================
-   GANTT TIMELINE & WATERFALL CHART STYLES
+   GANTT instance & WATERFALL CHART STYLES
    ========================================================================== */
 
-/* Timeline Scrubber Needle Line */
-.timeline-scrubber-needle {
+/* instance Scrubber Needle Line */
+.instance-scrubber-needle {
     pointer-events: none;
     position: absolute;
     top: 0;
@@ -262,7 +262,7 @@ g.node.node-focused text.node-text {
     box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
 }
 
-.timeline-scrubber-badge {
+.instance-scrubber-badge {
     position: absolute;
     top: 4px;
     transform: translateX(-50%);
@@ -280,7 +280,7 @@ g.node.node-focused text.node-text {
     z-index: 25;
 }
 
-.dark .timeline-scrubber-badge {
+.dark .instance-scrubber-badge {
     background: #0f172a;
     border-color: rgba(167, 139, 250, 0.5);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);

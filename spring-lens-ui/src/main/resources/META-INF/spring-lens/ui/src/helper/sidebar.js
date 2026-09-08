@@ -1,8 +1,8 @@
 import TemplateEngine from './template-engine.js';
 import { DEPENDENCY_CATEGORY_COLORS } from './constants.js';
 import { capitalize, getBeanCategory, resolveBeanMetadata } from './utils.js';
-import GraphTreeBuilder from '../builder/graph-tree-builder.js';
-import beanDataStore from '../storage/bean-data-store.js';
+import GraphTreeBuilder from './graph-tree-builder.js';
+import beanDataStore from './bean-data-store.js';
 
 export const DEFAULT_SIDEBAR_SELECTORS = {
     beanName: '#detail-bean-name',

@@ -1,15 +1,15 @@
-import httpClient from '../../client/http-client.js';
-import beanDataStore from '../../storage/bean-data-store.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
+import httpClient from '../helper/http-client.js';
+import beanDataStore from '../helper/bean-data-store.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
 import {
     tree, tbLink, lrLink, nodeStyle,
     NW, NH, RX, GAP_X, GAP_Y, ICON, ZOOM_SCALE_EXTENT,
     PROGRESS_BADGE_STYLES, ALL_PROGRESS_BADGE_CLASSES, ALL_PROGRESS_DOT_CLASSES,
     TemplateEngine, QueryParam, Sidebar, ToastNotification, BeanSearchEngine, debounce,
     resolveBeanMetadata
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
-export default class GraphController {
+export default class DependencyGraph {
 
     constructor(endpoints = {}) {
         this.dependencyGraphApi = endpoints.GRAPH_DEPENDENCIES;

@@ -59,7 +59,7 @@ Features include:
 * Factory methods
 * Bean origin and resource location
 * Proxy information
-* Startup timeline
+* Startup instance
 
 ### HTTP Request Monitoring
 
@@ -110,7 +110,7 @@ Understand exactly how your application starts.
 
 Features:
 
-* Bean initialization timeline
+* Bean initialization instance
 * Slow bean detection
 * Startup bottleneck analysis
 * Dependency chain visualization

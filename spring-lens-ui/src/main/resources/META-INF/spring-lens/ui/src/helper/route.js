@@ -1,5 +1,5 @@
-import TemplateEngine from '../utils/template-engine.js';
-import { NAV_STYLES, PageHeader } from '../utils/index.js';
+import TemplateEngine from './template-engine.js';
+import { NAV_STYLES, PageHeader } from './index.js';
 
 export default class Route {
 
@@ -7,7 +7,7 @@ export default class Route {
         this.activeRouteKey = null;
         this.templateCache  = new Map();
         this.routes         = config.routes ?? {};
-        this.pagesDir       = config.pagesDir ?? './src/pages/';
+        this.pagesDir       = config.pagesDir ?? './src/views/';
         this.container      = $(config.container ?? '#main-content');
         this.defaultRoute   = config.defaultRoute ?? 'definitions';
         this.appTitle       = config.appTitle ?? 'Spring Lens';
@@ -80,6 +80,12 @@ export default class Route {
         if (!route) {
             console.warn(`Route not found for key: ${routeKey}. Redirecting to dashboard.`);
             window.location.hash = '#/dashboard';
+            return;
+        }
+
+        if (route.redirectTo) {
+            const query = queryString ? `?${queryString}` : '';
+            window.location.hash = `#/${route.redirectTo}${query}`;
             return;
         }
 

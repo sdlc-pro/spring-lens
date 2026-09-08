@@ -375,7 +375,7 @@ function resolveBeanLayer(bean) {
 }
 
 /**
- * Formats tick label on timeline axis.
+ * Formats tick label on instance axis.
  */
 function formatTickLabel(ms) {
     if (ms === 0) return '0';
