@@ -6,7 +6,7 @@ import {
     NW, NH, RX, GAP_X, GAP_Y, ICON, ZOOM_SCALE_EXTENT,
     PROGRESS_BADGE_STYLES, ALL_PROGRESS_BADGE_CLASSES, ALL_PROGRESS_DOT_CLASSES,
     TemplateEngine, QueryParam, Sidebar, ToastNotification, BeanSearchEngine, debounce,
-    resolveBeanMetadata
+    resolveBeanMetadata, CanvasTreeRenderer
 } from '../helper/index.js';
 
 export default class DependencyGraph {
@@ -18,9 +18,12 @@ export default class DependencyGraph {
 
         this.root = null;
         this.svg = null;
+        this.canvas = null;
+        this.canvasRenderer = null;
         this.gLink = null;
         this.gNode = null;
         this.zoom = null;
+        this.currentTransform = d3.zoomIdentity;
 
         this.totalElements = 0;
         this.beanDependencies = null;
@@ -34,6 +37,7 @@ export default class DependencyGraph {
 
         this.mode = localStorage.getItem('sl-layout') ?? 'tb';
         this.nodeTheme = localStorage.getItem('sl-node-theme') ?? 'tint';
+        this.engine = localStorage.getItem('sl-render-engine') ?? 'svg';
     }
 
     initEvents() {
@@ -49,6 +53,7 @@ export default class DependencyGraph {
 
         this._bindControls();
         this.setNodeTheme(this.nodeTheme, false);
+        this.setEngine(this.engine, false);
 
         const isDataLoaded = await this._loadInitialData();
         if (!isDataLoaded) return;
@@ -63,6 +68,23 @@ export default class DependencyGraph {
 
         this.svg.selectAll('*').remove();
         this._injectTooltip();
+
+        const canvasElem = document.getElementById('tree-canvas');
+        if (canvasElem) {
+            this.canvas = canvasElem;
+            this.canvasRenderer = new CanvasTreeRenderer(canvasElem, {
+                onNodeClick: (event, node) => this._handleNodeClick(event, node),
+                onToggleClick: (event, node) => this._handleToggleClick(event, node),
+                onNodeHover: (event, node) => {
+                    this.showTip(event, node);
+                    this.highlightPathForNode(node);
+                },
+                onNodeLeave: () => {
+                    $('#tip').removeClass('show');
+                    this.resetPathHighlight();
+                }
+            });
+        }
 
         const mainContainer = this._setupSvgContainers();
         this._setupZoom(mainContainer);
@@ -201,19 +223,59 @@ export default class DependencyGraph {
         }
     }
 
-    _createDynamicHierarchyChild(parentNode, beanName, contextId, visited = new Set()) {
+    _nodeHasChildren(node) {
+        if (!node) return false;
+        if ((node.children && node.children.length > 0) || (node._children && node._children.length > 0)) {
+            return true;
+        }
+        if (node.data?.hasChildren) return true;
+        const deps = node.data?.dependencyNames || beanDataStore.findBeanByName(node.data?.fullName, node.data?.contextId)?.dependencies;
+        return Boolean(deps && deps.length > 0);
+    }
+
+    _lazyLoadChildren(node) {
+        if (!node || (node._children && node._children.length > 0)) return;
+
+        const fullName = node.data?.fullName;
+        const contextId = node.data?.contextId;
+        const beanRecord = beanDataStore.findBeanByName(fullName, contextId);
+        const deps = node.data?.dependencyNames || beanRecord?.dependencies || [];
+
+        if (!deps.length) {
+            node._children = [];
+            return;
+        }
+
+        node._children = deps.map(depName => {
+            let isCycle = false;
+            let ancestor = node;
+            while (ancestor) {
+                if (ancestor.data?.fullName === depName || ancestor.data?.name === depName) {
+                    isCycle = true;
+                    break;
+                }
+                ancestor = ancestor.parent;
+            }
+            return this._createDynamicHierarchyChild(node, depName, contextId, isCycle);
+        });
+    }
+
+    _createDynamicHierarchyChild(parentNode, beanName, contextId, isCycle = false) {
         const beanRecord = beanDataStore.findBeanByName(beanName, contextId);
         const displayName = GraphTreeBuilder._displayName(beanName);
-        const isCycle = visited.has(beanName);
+        const deps = beanRecord?.dependencies ?? [];
 
         const childData = {
             name: displayName,
             fullName: beanName,
             contextId,
+            hasChildren: deps.length > 0 && !isCycle,
+            dependencyNames: deps,
             meta: {
                 type: beanRecord?.type ?? 'N/A',
                 scope: beanRecord?.scope ?? 'singleton',
                 contextId,
+                deps: deps.length,
                 ...(isCycle && { isCycle: true })
             },
             ...(isCycle && { isCycle: true })
@@ -224,19 +286,7 @@ export default class DependencyGraph {
         childNode.parent = parentNode;
         childNode.id = `dyn_${parentNode.id}_${beanName}`;
         childNode.children = null;
-
-        if (isCycle) {
-            childNode._children = null;
-            return childNode;
-        }
-
-        const deps = beanRecord?.dependencies ?? [];
-        if (deps.length > 0) {
-            const nextVisited = new Set(visited).add(beanName);
-            childNode._children = deps.map(depName => this._createDynamicHierarchyChild(childNode, depName, contextId, nextVisited));
-        } else {
-            childNode._children = null;
-        }
+        childNode._children = null; // Shallow! Populated only when expanded
 
         return childNode;
     }
@@ -244,7 +294,8 @@ export default class DependencyGraph {
     async _fetchBeanGraphDependencies() {
         this._updateProgressBadge({ loaded: 0, total: 0, isComplete: false });
 
-        const serverResponse = await httpClient.get(this.dependencyGraphApi);
+        const searchParams = QueryParam.build({ pageNumber: 0, pageSize: 500 }).toString();
+        const serverResponse = await httpClient.getWithQuery(this.dependencyGraphApi, searchParams);
         this.beanDependencies = serverResponse;
 
         const initialBeanDefinitions = Array.isArray(serverResponse)
@@ -253,6 +304,8 @@ export default class DependencyGraph {
 
         this.accumulatedBeans = [...initialBeanDefinitions];
         this.totalElements = serverResponse?.totalElements ?? initialBeanDefinitions.length;
+
+        beanDataStore.addBeans(initialBeanDefinitions);
 
         const hasRemainingPages = this._hasSubsequentPages(serverResponse);
 
@@ -279,7 +332,7 @@ export default class DependencyGraph {
         this.isLoadingRemaining = true;
 
         try {
-            const { totalPages = 1, pageNumber = 0, pageSize = 20 } = firstPageData;
+            const { totalPages = 1, pageNumber = 0, pageSize = 500 } = firstPageData;
 
             for (let targetPageIndex = pageNumber + 1; targetPageIndex < totalPages; targetPageIndex++) {
                 const searchParams = QueryParam.build({
@@ -293,9 +346,8 @@ export default class DependencyGraph {
                 if (fetchedBeanDefinitions.length === 0) break;
 
                 this.accumulatedBeans.push(...fetchedBeanDefinitions);
-                this._buildHierarchyFromDependencies(this.accumulatedBeans);
+                beanDataStore.addBeans(fetchedBeanDefinitions);
 
-                this.update(null, { x: 0, y: 0, x0: 0, y0: 0 });
                 this._updateTotalBeanCount();
 
                 const isFinalPageBatch = targetPageIndex === totalPages - 1;
@@ -305,8 +357,15 @@ export default class DependencyGraph {
                     isComplete: isFinalPageBatch
                 });
 
-                await this._yieldThreadToEventLoop(50);
+                await this._yieldThreadToEventLoop(20);
             }
+
+            // Once streaming completes: build cross-links and update the hierarchy once
+            this._buildAndCrossLinkBeanDependencies(this.accumulatedBeans);
+            this._buildHierarchyFromDependencies(this.accumulatedBeans);
+            this.update(null, { x: 0, y: 0, x0: 0, y0: 0 });
+            this._updateTotalBeanCount();
+
         } catch (networkStreamingError) {
             console.error('Error loading lazy background bean graph data:', networkStreamingError);
             this._updateProgressBadge({ hasError: true, errorMsg: networkStreamingError.message });
@@ -434,8 +493,10 @@ export default class DependencyGraph {
     _createD3HierarchyRootNode(treeData) {
         const root = d3.hierarchy(treeData);
 
-        root.descendants().forEach((node, index) => {
-            node.id = index;
+        let autoIncId = 0;
+
+        root.descendants().forEach((node) => {
+            node.id = autoIncId++;
             node._children = node.children;
 
             if (node.data) {
@@ -446,10 +507,13 @@ export default class DependencyGraph {
                 }
             }
 
+            // Always keep only the first child level open at depth 0:
+            // - If 1 context: Root is that context (depth 0), its root beans (depth 1) are open, and their children are collapsed.
+            // - If multiple contexts: Root is "Application Contexts" (depth 0), each context (depth 1) is visible, and all context children (depth 2) are collapsed!
             if (node.depth > 0) {
                 node.children = null;
             }
-        })
+        });
 
         root.x0 = 0;
         root.y0 = 0;
@@ -521,7 +585,11 @@ export default class DependencyGraph {
         this.zoom = d3.zoom()
             .scaleExtent(ZOOM_SCALE_EXTENT)
             .on('zoom', ({ transform }) => {
+                this.currentTransform = transform;
                 gMain.attr('transform', transform);
+                if (this.engine === 'canvas') {
+                    this._renderCanvas();
+                }
                 this.updateZoomPercent(transform.k);
             });
 
@@ -530,6 +598,55 @@ export default class DependencyGraph {
                 this.closeSidebar();
                 this.clearFocusedNode();
             });
+
+        if (this.canvas) {
+            d3.select(this.canvas).call(this.zoom)
+                .on('click', (event) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const hit = this.canvasRenderer?._getNodeAtScreenPosition(event.clientX - rect.left, event.clientY - rect.top);
+                    if (!hit) {
+                        this.closeSidebar();
+                        this.clearFocusedNode();
+                    }
+                });
+        }
+    }
+
+    _renderCanvas(source = null, duration = 0) {
+        if (!this.canvasRenderer || !this.root) return;
+        const $graph = $('#beanGraph');
+        const width = $graph.width() || 800;
+        const height = $graph.height() || 600;
+        this.canvasRenderer.resize(width, height);
+
+        const config = {
+            mode: this.mode,
+            nodeTheme: this.nodeTheme,
+            focusedNodeFullName: this.focusedNodeFullName,
+            isHighlightPathActive: this.isHighlightPathActive,
+            selectedNodeRef: this.selectedNodeRef,
+            isNodeHighlighted: (node) => this._isNodeInActivePath(node),
+            isLinkHighlighted: (link) => this._isLinkInActivePath(link)
+        };
+
+        if (source && duration > 0) {
+            this.canvasRenderer.animateTransition(this.root, this.currentTransform, config, source, duration);
+        } else {
+            this.canvasRenderer.render(this.root, this.currentTransform, config);
+        }
+    }
+
+    _isNodeInActivePath(node) {
+        if (!this.isHighlightPathActive || !this.activePathNodeRefs) return true;
+        return this.activePathNodeRefs.has(node) ||
+            (node.id !== undefined && this.activePathNodeIds?.has(node.id)) ||
+            (node.data?.fullName && this.activePathNodeNames?.has(node.data.fullName)) ||
+            (node.data?.name && this.activePathNodeNames?.has(node.data.name));
+    }
+
+    _isLinkInActivePath(link) {
+        if (!this.isHighlightPathActive || !this.activePathNodeRefs) return true;
+        return this._isNodeInActivePath(link.source) && this._isNodeInActivePath(link.target);
     }
 
     showTip({ pageX, pageY }, node) {
@@ -545,7 +662,7 @@ export default class DependencyGraph {
 
         let metaText = `Leaf · depth ${depth}`;
         if (deps !== undefined) {
-            metaText = `Deps: ${deps} · Dependents: ${dependents}`;
+            metaText = `Deps: ${deps} · Dependents: ${dependents ?? 0}`;
         } else if (childrenCount > 0) {
             metaText = `${childrenCount} child bean(s) · depth ${depth}`;
         }
@@ -562,7 +679,7 @@ export default class DependencyGraph {
     }
 
     highlightPathForNode(node) {
-        if (!this.isHighlightPathActive || !node || !this.svg) return;
+        if (!this.isHighlightPathActive || !node) return;
 
         const pathNodeRefs = new Set();
         const pathNodeIds = new Set();
@@ -593,43 +710,51 @@ export default class DependencyGraph {
             }
         }
 
-        const isNodeInPath = (n) => {
-            if (!n) return false;
-            return pathNodeRefs.has(n) ||
-                (n.id !== undefined && pathNodeIds.has(n.id)) ||
-                (n.data?.fullName && pathNodeNames.has(n.data.fullName)) ||
-                (n.data?.name && pathNodeNames.has(n.data.name));
-        };
+        this.activePathNodeRefs = pathNodeRefs;
+        this.activePathNodeIds = pathNodeIds;
+        this.activePathNodeNames = pathNodeNames;
 
-        // Class toggle on all graph nodes
-        this.svg.selectAll('g.node')
-            .classed('highlighted', isNodeInPath)
-            .classed('dimmed', targetNode => !isNodeInPath(targetNode));
+        const isNodeInPath = (n) => this._isNodeInActivePath(n);
 
-        // Class toggle on all connecting links
-        this.svg.selectAll('path.link')
-            .classed('highlighted', ({ source, target }) => isNodeInPath(source) && isNodeInPath(target))
-            .classed('dimmed', ({ source, target }) => !isNodeInPath(source) || !isNodeInPath(target));
+        if (this.engine === 'canvas') {
+            this._renderCanvas();
+        } else if (this.svg) {
+            // Class toggle on all graph nodes
+            this.svg.selectAll('g.node')
+                .classed('highlighted', isNodeInPath)
+                .classed('dimmed', targetNode => !isNodeInPath(targetNode));
+
+            // Class toggle on all connecting links
+            this.svg.selectAll('path.link')
+                .classed('highlighted', ({ source, target }) => isNodeInPath(source) && isNodeInPath(target))
+                .classed('dimmed', ({ source, target }) => !isNodeInPath(source) || !isNodeInPath(target));
+        }
     }
 
     resetPathHighlight() {
-        if (!this.svg) return;
-
         if (this.isHighlightPathActive && this.selectedNodeRef) {
             this.highlightPathForNode(this.selectedNodeRef);
             return;
         }
 
-        this.svg.selectAll('g.node, path.link')
-            .classed('dimmed', false)
-            .classed('highlighted', false);
+        this.activePathNodeRefs = null;
+        this.activePathNodeIds = null;
+        this.activePathNodeNames = null;
+
+        if (this.engine === 'canvas') {
+            this._renderCanvas();
+        } else if (this.svg) {
+            this.svg.selectAll('g.node, path.link')
+                .classed('dimmed', false)
+                .classed('highlighted', false);
+        }
     }
 
     update(event, source) {
-        if (!this.svg?.node() || !this.root) return;
+        if (!this.root) return;
 
         const isTB = this.mode === 'tb';
-        const duration = event?.altKey ? 4000 : 950;
+        const duration = event?.altKey ? 4000 : (this.engine === 'canvas' ? 650 : 950);
         const linkColor = '#94a3b8';
 
         const descendants = this.root.descendants();
@@ -640,7 +765,7 @@ export default class DependencyGraph {
 
         descendants.forEach((node) => {
             const lengthOfBeanName = node.data.name?.length ?? 0;
-            const hasChildren = (node.children && node.children.length > 0) || (node._children && node._children.length > 0);
+            const hasChildren = this._nodeHasChildren(node);
             const extraPadding = hasChildren ? 88 : 56;
             node.width = Math.max(165, lengthOfBeanName * 7.5 + extraPadding);
 
@@ -651,10 +776,14 @@ export default class DependencyGraph {
 
         this._calculateLayout(nodes, isTB);
 
-        const transition = d3.transition().duration(duration);
+        if (this.engine === 'canvas') {
+            this._renderCanvas(source, duration);
+        } else if (this.svg?.node()) {
+            const transition = d3.transition().duration(duration);
 
-        this._drawNodes(nodes, transition, isTB, source);
-        this._drawLinks(links, transition, isTB, source, linkColor);
+            this._drawNodes(nodes, transition, isTB, source);
+            this._drawLinks(links, transition, isTB, source, linkColor);
+        }
 
         // Store current positions for future animations
         this.root.eachBefore(node => {
@@ -669,6 +798,40 @@ export default class DependencyGraph {
         const maxWidth = d3.max(nodes, node => node.width) || NW;
         tree.nodeSize(isTB ? [maxWidth + GAP_X, NH + GAP_Y] : [NH + 28, maxWidth + GAP_Y]);
         tree(this.root);
+    }
+
+    async _handleNodeClick(event, node) {
+        this.markNodeAsFocused(node);
+
+        const { contextId, fullName, meta } = node.data;
+
+        if (meta?.type === "context") {
+            this.closeSidebar();
+            await this._handleToggleClick(event, node);
+            return;
+        }
+
+        const details = await this.fetchBeanDetails(contextId, fullName);
+        if (details) this._mergeBeanDetailsIntoTree(node, details);
+        await this.selectNodeAndShowDetails(node, details);
+
+        $('#tip').removeClass('show');
+    }
+
+    async _handleToggleClick(event, node) {
+        const { contextId, fullName, meta } = node.data;
+        if (meta?.type !== "context") {
+            const details = await this.fetchBeanDetails(contextId, fullName);
+            if (details) this._mergeBeanDetailsIntoTree(node, details);
+        }
+
+        if (!node._children || node._children.length === 0) {
+            this._lazyLoadChildren(node);
+        }
+
+        node.children = node.children ? null : node._children;
+        this.update(event, node);
+        $('#tip').removeClass('show');
     }
 
     _drawNodes(nodes, transition, isTB, source) {
@@ -696,17 +859,7 @@ export default class DependencyGraph {
             .attr('fill-opacity', 0)
             .on('click', async (event, node) => {
                 event.stopPropagation();
-                this.markNodeAsFocused(node);
-
-                const { contextId, fullName, meta } = node.data;
-
-                if (meta?.type !== "context") {
-                    const details = await this.fetchBeanDetails(contextId, fullName);
-                    if (details) this._mergeBeanDetailsIntoTree(node, details);
-                    await this.selectNodeAndShowDetails(node, details);
-                }
-
-                $tip.removeClass('show');
+                await this._handleNodeClick(event, node);
             })
             .on('mouseenter', (event, node) => {
                 this.showTip(event, node);
@@ -766,16 +919,7 @@ export default class DependencyGraph {
             })
             .on('click', async (event, node) => {
                 event.stopPropagation();
-
-                const { contextId, fullName, meta } = node.data;
-                if (meta?.type !== "context") {
-                    const details = await this.fetchBeanDetails(contextId, fullName);
-                    if (details) this._mergeBeanDetailsIntoTree(node, details);
-                }
-
-                node.children = node.children ? null : node._children;
-                this.update(event, node);
-                $tip.removeClass('show');
+                await this._handleToggleClick(event, node);
             });
 
         toggleGroup.append('circle')
@@ -811,6 +955,7 @@ export default class DependencyGraph {
 
     _updateNodeStylesAndContent(selection) {
         const isBadge = (this.nodeTheme === 'badge');
+        const self = this;
 
         selection
             .style('--node-color', node => nodeStyle(node, this.nodeTheme).stroke)
@@ -820,7 +965,6 @@ export default class DependencyGraph {
                     node.data?.name === this.focusedNodeFullName
                 )
             ));
-
 
         selection.select('.node-rect')
             .attr('x', ({ width }) => -width / 2)
@@ -847,7 +991,7 @@ export default class DependencyGraph {
             .text(({ data }) => data.name);
 
         selection.each(function (node) {
-            const hasChildren = (node.children && node.children.length > 0) || (node._children && node._children.length > 0);
+            const hasChildren = self._nodeHasChildren(node);
             const toggle = d3.select(this).select('.node-toggle');
 
             if (hasChildren) {
@@ -905,15 +1049,18 @@ export default class DependencyGraph {
     }
 
     zoomBy(factor, duration = 300) {
-        if (!this.svg || !this.zoom) return;
+        if (!this.zoom) return;
 
-        this.svg.transition()
-            .duration(duration)
-            .call(this.zoom.scaleBy, factor);
+        const target = (this.engine === 'canvas' && this.canvas) ? d3.select(this.canvas) : this.svg;
+        if (target) {
+            target.transition()
+                .duration(duration)
+                .call(this.zoom.scaleBy, factor);
+        }
     }
 
     fitView(duration = 500, padding = 35, minScale = 0.4, maxScale = 1.8) {
-        if (!this.svg?.node() || !this.root) return;
+        if ((!this.svg?.node() && !this.canvas) || !this.root) return;
 
         const $beanGraph = $('#beanGraph');
         const width = $beanGraph.width() || 800;
@@ -955,9 +1102,21 @@ export default class DependencyGraph {
         const tx = width / 2 - centerX * scale;
         const ty = height / 2 - centerY * scale;
 
-        this.svg.transition()
-            .duration(duration)
-            .call(this.zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+        const newTransform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        this.currentTransform = newTransform;
+
+        if (this.engine === 'canvas') {
+            if (duration > 0 && this.canvasRenderer) {
+                this.canvasRenderer.animateTransform(newTransform, duration, (k) => this.updateZoomPercent(k));
+            } else {
+                this._renderCanvas();
+                this.updateZoomPercent(scale);
+            }
+        } else if (this.svg) {
+            this.svg.transition()
+                .duration(duration)
+                .call(this.zoom.transform, newTransform);
+        }
     }
 
     updateZoomPercent(k) {
@@ -1102,11 +1261,62 @@ export default class DependencyGraph {
         return normalizedNodeName === normalizedTargetName;
     }
 
+    _expandPathToBean(targetBeanName, contextId = '') {
+        if (!this.root || !targetBeanName) return null;
+
+        const queue = [[targetBeanName]];
+        const visited = new Set([targetBeanName]);
+        let foundPath = null;
+
+        let iterations = 0;
+        while (queue.length > 0 && iterations++ < 500) {
+            const path = queue.shift();
+            const currentBeanName = path[0];
+
+            const existingNode = this.findNodeInTree(this.root, currentBeanName);
+            if (existingNode) {
+                foundPath = path;
+                break;
+            }
+
+            const record = beanDataStore.findBeanByName(currentBeanName, contextId);
+            const dependents = record?.dependents || [];
+
+            for (let i = 0; i < dependents.length; i++) {
+                const parentName = dependents[i];
+                if (!visited.has(parentName)) {
+                    visited.add(parentName);
+                    queue.push([parentName, ...path]);
+                }
+            }
+        }
+
+        if (!foundPath) return null;
+
+        let currentNode = this.findNodeInTree(this.root, foundPath[0]);
+        for (let i = 0; i < foundPath.length - 1; i++) {
+            if (!currentNode) break;
+            this._lazyLoadChildren(currentNode);
+            currentNode.children = currentNode._children;
+            const nextBeanName = foundPath[i + 1];
+            currentNode = (currentNode.children || []).find(c =>
+                c.data?.fullName === nextBeanName || c.data?.name === nextBeanName
+            );
+        }
+
+        this.update(null, this.root);
+        return currentNode || this.findNodeInTree(this.root, targetBeanName);
+    }
+
     async focusOnBean(fullName, contextId = '', openSidebar = false) {
         if (!fullName) return;
 
         if (this.root) {
-            const targetNode = this.findNodeInTree(this.root, fullName);
+            let targetNode = this.findNodeInTree(this.root, fullName);
+            if (!targetNode) {
+                targetNode = this._expandPathToBean(fullName, contextId);
+            }
+
             if (targetNode) {
                 // Expand collapsed parents along the upward ancestor path
                 let currentNode = targetNode.parent;
@@ -1139,9 +1349,21 @@ export default class DependencyGraph {
                 const translateX = width / 2 - targetX * zoomScale;
                 const translateY = height / 2 - targetY * zoomScale;
 
-                this.svg.transition()
-                    .duration(600)
-                    .call(this.zoom.transform, d3.zoomIdentity.translate(translateX, translateY).scale(zoomScale));
+                const newTransform = d3.zoomIdentity.translate(translateX, translateY).scale(zoomScale);
+                this.currentTransform = newTransform;
+
+                if (this.engine === 'canvas') {
+                    if (this.canvasRenderer) {
+                        this.canvasRenderer.animateTransform(newTransform, 500, (k) => this.updateZoomPercent(k));
+                    } else {
+                        this._renderCanvas();
+                        this.updateZoomPercent(zoomScale);
+                    }
+                } else if (this.svg) {
+                    this.svg.transition()
+                        .duration(600)
+                        .call(this.zoom.transform, newTransform);
+                }
 
                 this.markNodeAsFocused(targetNode);
 
@@ -1160,25 +1382,64 @@ export default class DependencyGraph {
 
     markNodeAsFocused(targetNode) {
         this.focusedNodeFullName = targetNode?.data?.fullName || targetNode?.data?.name || (typeof targetNode === 'string' ? targetNode : null);
-        if (!this.svg) return;
 
-        this.svg.selectAll('g.node')
-            .style('--node-color', node => nodeStyle(node).stroke)
-            .classed('node-focused', node => Boolean(
-                this.focusedNodeFullName && (
-                    node === targetNode ||
-                    node.data?.fullName === this.focusedNodeFullName ||
-                    node.data?.name === this.focusedNodeFullName
-                )
-            ));
+        if (this.engine === 'canvas') {
+            this._renderCanvas();
+        } else if (this.svg) {
+            this.svg.selectAll('g.node')
+                .style('--node-color', node => nodeStyle(node).stroke)
+                .classed('node-focused', node => Boolean(
+                    this.focusedNodeFullName && (
+                        node === targetNode ||
+                        node.data?.fullName === this.focusedNodeFullName ||
+                        node.data?.name === this.focusedNodeFullName
+                    )
+                ));
 
-        this.svg.selectAll('g.node.node-focused').raise();
+            this.svg.selectAll('g.node.node-focused').raise();
+        }
     }
 
     clearFocusedNode() {
         this.focusedNodeFullName = null;
-        if (!this.svg) return;
-        this.svg.selectAll('g.node').classed('node-focused', false);
+        if (this.engine === 'canvas') {
+            this._renderCanvas();
+        } else if (this.svg) {
+            this.svg.selectAll('g.node').classed('node-focused', false);
+        }
+    }
+
+    setEngine(engineName, shouldUpdate = true) {
+        this.engine = engineName;
+        localStorage.setItem('sl-render-engine', engineName);
+
+        const isSvg = engineName === 'svg';
+        const activeClasses = 'bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs font-bold';
+        const inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white font-medium';
+
+        $('#btn-engine-svg')
+            .toggleClass(activeClasses, isSvg)
+            .toggleClass(inactiveClasses, !isSvg);
+
+        $('#btn-engine-canvas')
+            .toggleClass(activeClasses, !isSvg)
+            .toggleClass(inactiveClasses, isSvg);
+
+        const $svg = $('#tree-svg');
+        const $canvas = $('#tree-canvas');
+
+        if (isSvg) {
+            $canvas.addClass('hidden');
+            $svg.removeClass('hidden');
+        } else {
+            $svg.addClass('hidden');
+            $canvas.removeClass('hidden');
+        }
+
+        if (shouldUpdate && this.root) {
+            this.update(null, this.root);
+            this.fitView(300);
+        }
     }
 
     setMode(layoutMode) {
@@ -1210,6 +1471,9 @@ export default class DependencyGraph {
 
         this.update(null, { x, y, x0, y0 });
         this.fitView(500);
+        if (this.engine === 'canvas') {
+            this._renderCanvas();
+        }
     }
 
     setNodeTheme(themeName, shouldUpdate = true) {
@@ -1230,6 +1494,9 @@ export default class DependencyGraph {
 
         if (shouldUpdate && this.root) {
             this.update(null, this.root);
+            if (this.engine === 'canvas') {
+                this._renderCanvas();
+            }
         }
     }
 
@@ -1467,7 +1734,7 @@ export default class DependencyGraph {
 
     _getToolbarActionMap($actionButton) {
         return {
-            'btn-expand': () => this._mutateTreeNodes(node => node.children = node._children),
+            'btn-expand': () => this._expandVisibleNodes(2),
             'btn-collapse': () => this._mutateTreeNodes(node => { if (node.depth > 0) node.children = null; }),
             'btn-control-zoom-in': () => this.zoomBy(1.25),
             'btn-control-zoom-out': () => this.zoomBy(0.8),
@@ -1478,7 +1745,9 @@ export default class DependencyGraph {
             'btn-tb': () => this.setMode('tb'),
             'btn-lr': () => this.setMode('lr'),
             'btn-node-theme-tint': () => this.setNodeTheme('tint'),
-            'btn-node-theme-badge': () => this.setNodeTheme('badge')
+            'btn-node-theme-badge': () => this.setNodeTheme('badge'),
+            'btn-engine-svg': () => this.setEngine('svg'),
+            'btn-engine-canvas': () => this.setEngine('canvas')
         };
     }
 
@@ -1503,8 +1772,17 @@ export default class DependencyGraph {
 
     _bindCustomEventHandlers() {
         document.addEventListener('themechanged', () => {
-            if (this.root) this.update(null, this.root);
+            if (this.root) {
+                this.update(null, this.root);
+                if (this.engine === 'canvas') this._renderCanvas();
+            }
         });
+
+        window.addEventListener('resize', debounce(() => {
+            if (this.engine === 'canvas' && this.canvasRenderer && this.root) {
+                this._renderCanvas();
+            }
+        }, 150));
 
         $(document).on('change', '#context-filter', (event) => {
             this.selectedContextId = $(event.target).val();
@@ -1521,6 +1799,20 @@ export default class DependencyGraph {
                 this.switchTab(tabName);
             }
         });
+    }
+
+    _expandVisibleNodes(maxDepth = 2) {
+        if (!this.root) return;
+        this.root.eachBefore(node => {
+            if (node.depth < maxDepth) {
+                if (!node._children || node._children.length === 0) {
+                    this._lazyLoadChildren(node);
+                }
+                node.children = node._children;
+            }
+        });
+        this.update(null, this.root);
+        this.fitView(400);
     }
 
     _mutateTreeNodes(mutatorFn) {

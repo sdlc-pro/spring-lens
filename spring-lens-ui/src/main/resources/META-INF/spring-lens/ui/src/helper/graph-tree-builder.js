@@ -91,41 +91,26 @@ export default class GraphTreeBuilder {
         const rootBeans = beans.filter(bean => !hasParent.has(bean.name));
         const rootNames = rootBeans.length ? rootBeans.map(bean => bean.name) : [beans[0].name];
 
-        // 3. Build tree recursively with single-set backtracking (prevents memory cloning)
-        const visited = new Set();
-
-        const buildNode = (name) => {
+        // 3. Build top-level root bean nodes (SHALLOW: 1 level only, eliminating exponential DAG explosion)
+        contextNode.children = rootNames.map(name => {
             const beanRecord = beanMap.get(name) || {};
-            const isCycle = visited.has(name);
-            const meta = {
-                type: beanRecord.type || 'N/A',
-                scope: beanRecord.scope || 'singleton',
-                contextId,
-                ...(isCycle && { isCycle: true })
-            };
-
-            const node = {
+            const deps = beanRecord.dependencies || [];
+            return {
                 name: this._displayName(name),
                 fullName: name,
                 contextId,
-                meta,
-                ...(isCycle && { isCycle: true })
+                hasChildren: deps.length > 0,
+                dependencyNames: deps,
+                meta: {
+                    type: beanRecord.type || 'N/A',
+                    scope: beanRecord.scope || 'singleton',
+                    contextId,
+                    deps: deps.length
+                },
+                children: null
             };
+        });
 
-            if (isCycle) return node;
-
-            visited.add(name);
-            const validChildren = beanRecord.dependencies || [];
-
-            if (validChildren.length > 0) {
-                node.children = validChildren.map(buildNode);
-            }
-
-            visited.delete(name);
-            return node;
-        };
-
-        contextNode.children = rootNames.map(buildNode);
         return contextNode;
     }
 
