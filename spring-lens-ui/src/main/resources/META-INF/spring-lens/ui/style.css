@@ -422,3 +422,15 @@ table thead th {
         min-height: 320px;
     }
 }
+
+/* Prevent text overflow in condition report details */
+#condition-detail-reason-text,
+[data-field="reasonText"],
+#condition-detail-diagnostic-msg,
+[data-field="diagnosticMsg"],
+[data-field="matchMessage"],
+#condition-detail-source-full,
+[data-field="sourceFull"] {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
