@@ -306,15 +306,15 @@
                 <!-- Layout Toggle -->
                 <div
                     class="flex items-center border border-gray-200 dark:border-slate-800 rounded-xl bg-gray-50/80 dark:bg-slate-950 p-1 shadow-xs">
-                    <button id="modal-btn-tb"
-                        class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs"
-                        title="Top → Bottom Layout">
-                        <span class="material-symbols-outlined text-[15px]">south</span> Top-Down
-                    </button>
                     <button id="modal-btn-lr"
-                        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white"
+                        class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs"
                         title="Left → Right Layout">
                         <span class="material-symbols-outlined text-[15px]">east</span> Left-Right
+                    </button>
+                    <button id="modal-btn-tb"
+                        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white"
+                        title="Top → Bottom Layout">
+                        <span class="material-symbols-outlined text-[15px]">south</span> Top-Down
                     </button>
                 </div>
 
@@ -404,8 +404,6 @@
                         <div class="inline-flex items-center gap-1 flex-shrink-0" data-field="inlineTraits"></div>
                     </div>
                     <div class="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-slate-400 font-mono truncate mt-0.5">
-                        <span class="text-gray-600 dark:text-slate-300 font-sans font-medium text-[10.5px]" data-field="category">Component</span>
-                        <span class="text-gray-300 dark:text-slate-600 text-[10px]">•</span>
                         <span class="inline-flex items-center gap-1 text-[10.5px] text-gray-600 dark:text-slate-300" title="Dependencies (what this bean depends on)">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-2xs"></span>
                             <span data-field="depCount">0 deps</span>

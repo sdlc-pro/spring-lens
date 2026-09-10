@@ -653,12 +653,9 @@ export default class Instance {
                 queryParams.toString()
             );
 
-            if (proxyInfo) {
-                this.renderProxyInfo(proxyInfo);
-            } else {
-                this.renderProxyEmptyState();
-            }
+            this.renderProxyInfo(proxyInfo);
         } catch (error) {
+            console.warn('Failed to fetch or render proxy info:', error);
             // 404 not found
             this.renderProxyEmptyState();
         } finally {
@@ -708,18 +705,21 @@ export default class Instance {
         $advicesList.empty();
         if (advices.length === 0) {
             const emptyClone = TemplateEngine.clone('tpl-proxy-empty-item');
-            emptyClone.find('[data-field="message"]').text('No custom advices attached');
-            $advicesList.append(emptyClone);
+            if (emptyClone) {
+                const $emptyItem = $(emptyClone.firstElementChild);
+                $emptyItem.find('[data-field="message"]').text('No custom advices attached');
+                $advicesList.append($emptyItem);
+            }
         } else {
-            const fragment = $(document.createDocumentFragment());
             advices.forEach(adv => {
                 const shortName = adv.includes('.') ? adv.split('.').pop() : adv;
                 const clone = TemplateEngine.clone('tpl-proxy-item');
-                clone.find('[data-field="name"]').text(shortName).attr('title', adv);
-                clone.find('[data-field="badge"]').text('Advice');
-                fragment.append(clone);
+                if (!clone) return;
+                const $item = $(clone.firstElementChild);
+                $item.find('[data-field="name"]').text(shortName).attr('title', adv);
+                $item.find('[data-field="badge"]').text('Advice');
+                $advicesList.append($item);
             });
-            $advicesList.append(fragment);
         }
 
         // Interfaces list
@@ -728,18 +728,21 @@ export default class Instance {
         $interfacesList.empty();
         if (proxiedInterfaces.length === 0) {
             const emptyClone = TemplateEngine.clone('tpl-proxy-empty-item');
-            emptyClone.find('[data-field="message"]').text('No interfaces proxied (CGLIB class proxy)');
-            $interfacesList.append(emptyClone);
+            if (emptyClone) {
+                const $emptyItem = $(emptyClone.firstElementChild);
+                $emptyItem.find('[data-field="message"]').text('No interfaces proxied (CGLIB class proxy)');
+                $interfacesList.append($emptyItem);
+            }
         } else {
-            const fragment = $(document.createDocumentFragment());
             proxiedInterfaces.forEach(iface => {
                 const shortName = iface.includes('.') ? iface.split('.').pop() : iface;
                 const clone = TemplateEngine.clone('tpl-proxy-item');
-                clone.find('[data-field="name"]').text(shortName).attr('title', iface);
-                clone.find('[data-field="badge"]').text('Interface');
-                fragment.append(clone);
+                if (!clone) return;
+                const $item = $(clone.firstElementChild);
+                $item.find('[data-field="name"]').text(shortName).attr('title', iface);
+                $item.find('[data-field="badge"]').text('Interface');
+                $interfacesList.append($item);
             });
-            $interfacesList.append(fragment);
         }
 
         $('#time-sidebar-proxy-empty').addClass('hidden').hide();
@@ -871,7 +874,8 @@ export default class Instance {
         this._clickActions = {
             'refresh-data': ($target) => this._handleRefreshData($target),
             'reset-filters': () => {
-                this._resetFilterState();
+                this._resetFilterState(true);
+                this._updateSortHeaderIcons();
                 return this.fetchInstanceData();
             },
             'select-bean': ($target) => this._handleSelectBean($target),
@@ -998,6 +1002,14 @@ export default class Instance {
     _syncSortDropdowns() {
         $('#time-filter-duration').val(this.sortBy === 'initDurationNanos' ? this.sortDir : '');
         $('#time-filter-created').val(this.sortBy === 'createdAt' ? this.sortDir : '');
+
+        if (this.sortBy === 'initDurationNanos') {
+            $('#time-sort-label').text('Duration');
+            $('#time-sort-icon').text(this.sortDir === 'ASC' ? 'arrow_upward' : 'arrow_downward');
+        } else {
+            $('#time-sort-label').text('Order');
+            $('#time-sort-icon').text('swap_vert');
+        }
     }
 
     _bindSortHeaders() {
@@ -1185,18 +1197,9 @@ export default class Instance {
         if (this.sortBy === 'createdAt') {
             this.sortBy = 'initDurationNanos';
             this.sortDir = 'DESC';
-            $('#time-sort-label').text('Duration');
-            $('#time-sort-icon').text('arrow_downward');
-        } else if (this.sortBy === 'initDurationNanos') {
-            this.sortBy = 'beanName';
-            this.sortDir = 'ASC';
-            $('#time-sort-label').text('Name');
-            $('#time-sort-icon').text('sort_by_alpha');
         } else {
             this.sortBy = 'createdAt';
             this.sortDir = 'ASC';
-            $('#time-sort-label').text('Order');
-            $('#time-sort-icon').text('swap_vert');
         }
 
         this._syncSortDropdowns();
@@ -1294,7 +1297,9 @@ export default class Instance {
         return this.fetchInstanceData();
     }
 
-    _resetFilterState() {
+    _resetFilterState(preserveView = false) {
+        const targetView = preserveView ? this.activeView : 'instance';
+
         Object.assign(this, {
             searchQuery: '',
             minDurationMs: 0,
@@ -1304,7 +1309,7 @@ export default class Instance {
             sortBy: 'createdAt',
             sortDir: 'ASC',
             zoomLevel: 1,
-            activeView: 'instance',
+            activeView: targetView,
             activeSidebarTab: 'telemetry',
             selectedBeanName: null,
             selectedContextId: null,
@@ -1329,15 +1334,17 @@ export default class Instance {
         $('#time-sort-icon').text('swap_vert');
         $('#time-zoom-level-badge').text('100%');
 
-        // Reset View Toggle buttons & Card containers to default instance view
-        $('#time-view-btn-instance')
-            .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
-            .removeClass('text-gray-500 dark:text-gray-400 font-medium');
-        $('#time-view-btn-table')
-            .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
-            .addClass('text-gray-500 dark:text-gray-400 font-medium');
-        $('#instance-gantt-card').removeClass('hidden');
-        $('#instance-table-card').addClass('hidden');
+        if (!preserveView) {
+            // Reset View Toggle buttons & Card containers to default instance view
+            $('#time-view-btn-instance')
+                .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
+                .removeClass('text-gray-500 dark:text-gray-400 font-medium');
+            $('#time-view-btn-table')
+                .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
+                .addClass('text-gray-500 dark:text-gray-400 font-medium');
+            $('#instance-gantt-card').removeClass('hidden');
+            $('#instance-table-card').addClass('hidden');
+        }
 
         $('.time-quick-filter-btn')
             .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
