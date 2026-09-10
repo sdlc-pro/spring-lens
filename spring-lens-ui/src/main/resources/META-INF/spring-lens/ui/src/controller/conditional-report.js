@@ -610,9 +610,13 @@ export default class ConditionalReport {
             );
         } else {
             $reasonIcon.text('cancel').removeClass('text-emerald-500').addClass('text-red-500');
+            const failedMatches = matches.filter(m => !m.matched);
             const failureReason = failedMatch?.message || 'One or more required conditions did not match.';
             $reasonText.text(failureReason);
-            $('#condition-detail-diagnostic-msg').text(failureReason);
+            const diagnosticDetails = failedMatches.length > 1
+                ? failedMatches.map(m => `• ${this._formatConditionName(m.condition)}: ${m.message}`).join('\n')
+                : failureReason;
+            $('#condition-detail-diagnostic-msg').text(diagnosticDetails);
         }
 
         // Render Condition Outcomes List
@@ -715,9 +719,13 @@ export default class ConditionalReport {
             );
         } else {
             $reasonIcon.text('cancel').addClass('text-red-500');
+            const failedMatches = matches.filter(m => !m.matched);
             const failureReason = failedMatch?.message || 'One or more required conditions did not match.';
             $reasonText.text(failureReason);
-            $diagMsg.text(failureReason);
+            const diagnosticDetails = failedMatches.length > 1
+                ? failedMatches.map(m => `• ${this._formatConditionName(m.condition)}: ${m.message}`).join('\n')
+                : failureReason;
+            $diagMsg.text(diagnosticDetails);
         }
 
         // Render Condition Outcomes List

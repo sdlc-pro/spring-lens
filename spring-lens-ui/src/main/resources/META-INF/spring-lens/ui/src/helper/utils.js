@@ -217,166 +217,132 @@ function formatDuration(nanos) {
 }
 
 /**
+ * Formats a date, timestamp, or ISO string into a clean, human-readable format.
+ * e.g. "Sep 10, 2026, 13:27:49.123"
+ */
+function formatDateTime(val) {
+    if (!val) return '-';
+    let date;
+    if (val instanceof Date) {
+        date = val;
+    } else if (typeof val === 'number') {
+        date = new Date(val < 1e11 ? val * 1000 : val);
+    } else if (typeof val === 'string') {
+        date = new Date(val);
+    } else {
+        return String(val);
+    }
+
+    if (Number.isNaN(date.getTime())) {
+        return String(val);
+    }
+
+    try {
+        const datePart = date.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit'
+        });
+        const timePart = date.toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        const ms = String(date.getMilliseconds()).padStart(3, '0');
+        return `${datePart}, ${timePart}.${ms}`;
+    } catch {
+        return date.toLocaleString();
+    }
+}
+
+/**
  * Resolves dynamic latency heat-map color palette based on bean initialization duration.
  * Spectrum Hierarchy:
- * - < 2 µs (0 - 2,000 ns) -> Luminous Cyan (#06b6d4)
- * - 2 - 5 µs (2,000 - 5,000 ns) -> Teal (#14b8a6)
- * - 5 - 10 µs (5,000 - 10,000 ns) -> Emerald Green (#10b981)
- * - 10 - 25 µs (10,000 - 25,000 ns) -> Lime / Chartreuse (#84cc16)
- * - 25 - 100 µs (25,000 - 100,000 ns) -> Yellow / Gold (#eab308)
- * - 100 - 500 µs (100,000 - 500,000 ns / 0.1ms - 0.5ms) -> Amber (#f59e0b)
- * - 500 µs - 2 ms (500,000 - 2,000,000 ns / 0.5ms - 2ms) -> Warm Orange (#f97316)
- * - 2 ms - 10 ms -> Coral / Rose (#f43f5e)
- * - 10 ms - 20 ms -> Royal Purple / Violet (#8b5cf6)
- * - 20 ms - 50 ms -> Amber (#f59e0b)
- * - 50 ms - 100 ms -> Warm Orange (#f97316)
- * - >= 100 ms (or relative max time) -> Crimson Red / Bottleneck (#ef4444)
+ * - > 500 µs (> 500,000 ns) -> Crimson Red / Bottleneck (#ef4444)
+ * - 200 - 500 µs (200,000 - 500,000 ns) -> Warm Orange (#f97316)
+ * - 50 - 200 µs (50,000 - 200,000 ns) -> Amber / Yellow (#f59e0b)
+ * - 10 - 50 µs (10,000 - 50,000 ns) -> Lime / Chartreuse (#84cc16)
+ * - 2 - 10 µs (2,000 - 10,000 ns) -> Emerald Green (#10b981)
+ * - < 2 µs (< 2,000 ns) -> Luminous Cyan (#06b6d4)
  */
-function resolveDurationColor(initDurationNanos, maxDurationNanos = 0) {
+function resolveDurationColor(initDurationNanos, maxDurationNanos = 0, bottleneckThresholdNanos = 500000) {
     const nanos = initDurationNanos || 0;
-    const ms = nanos / 1e6;
-    const maxNanos = maxDurationNanos || 0;
-    const isMaxTime = maxNanos > 0 && nanos >= maxNanos * 0.95 && maxNanos >= 100000000;
+    const threshold = bottleneckThresholdNanos && bottleneckThresholdNanos > 0 ? bottleneckThresholdNanos : 500000;
 
-    // 1. Critical Bottleneck (>= 100ms)
-    if (ms >= 100 || isMaxTime) {
+    // 1. Critical Bottleneck (> threshold)
+    if (nanos > threshold) {
         return {
             color: '#ef4444',
             gradient: 'linear-gradient(135deg, #ef4444e6, #dc2626cc)',
             glow: 'rgba(239, 68, 68, 0.55)',
             tier: 'bottleneck',
             isBottleneck: true,
+            textClass: 'text-rose-600 dark:text-rose-400',
             badgeClass: 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/50'
         };
     }
 
-    // 2. High (50ms - 100ms) -> Warm Orange
-    if (ms >= 50) {
+    // 2. High (0.4 * threshold to 1.0 * threshold) -> Warm Orange
+    if (nanos >= threshold * 0.4) {
         return {
             color: '#f97316',
             gradient: 'linear-gradient(135deg, #f97316e6, #ea580ccc)',
             glow: 'rgba(249, 115, 22, 0.5)',
             tier: 'high',
             isBottleneck: false,
+            textClass: 'text-orange-600 dark:text-orange-400',
             badgeClass: 'bg-orange-50 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800/40'
         };
     }
 
-    // 3. Medium (20ms - 50ms) -> Amber
-    if (ms >= 20) {
+    // 3. Medium (0.1 * threshold to 0.4 * threshold) -> Amber
+    if (nanos >= threshold * 0.1) {
         return {
             color: '#f59e0b',
             gradient: 'linear-gradient(135deg, #f59e0be6, #d97706cc)',
             glow: 'rgba(245, 158, 11, 0.5)',
             tier: 'medium',
             isBottleneck: false,
+            textClass: 'text-amber-600 dark:text-amber-400',
             badgeClass: 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40'
         };
     }
 
-    // 4. Heavy (10ms - 20ms) -> Royal Purple / Violet
-    if (ms >= 10) {
-        return {
-            color: '#8b5cf6',
-            gradient: 'linear-gradient(135deg, #8b5cf6e6, #7c3aedcc)',
-            glow: 'rgba(139, 92, 246, 0.5)',
-            tier: 'heavy',
-            isBottleneck: false,
-            badgeClass: 'bg-purple-50 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40'
-        };
-    }
-
-    // 3. Slow (2ms - 10ms) -> Coral / Rose
-    if (ms >= 2) {
-        return {
-            color: '#f43f5e',
-            gradient: 'linear-gradient(135deg, #f43f5ee6, #e11d48cc)',
-            glow: 'rgba(244, 63, 94, 0.5)',
-            tier: 'slow',
-            isBottleneck: false,
-            badgeClass: 'bg-rose-50 text-rose-600 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40'
-        };
-    }
-
-    // 4. Elevated (500µs - 2ms / 0.5ms - 2ms) -> Warm Orange
-    if (nanos >= 500000) {
-        return {
-            color: '#f97316',
-            gradient: 'linear-gradient(135deg, #f97316e6, #ea580ccc)',
-            glow: 'rgba(249, 115, 22, 0.5)',
-            tier: 'elevated',
-            isBottleneck: false,
-            badgeClass: 'bg-orange-50 text-orange-700 border-orange-200/80 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800/40'
-        };
-    }
-
-    // 5. Notable (100µs - 500µs) -> Amber
-    if (nanos >= 100000) {
-        return {
-            color: '#f59e0b',
-            gradient: 'linear-gradient(135deg, #f59e0be6, #d97706cc)',
-            glow: 'rgba(245, 158, 11, 0.5)',
-            tier: 'notable',
-            isBottleneck: false,
-            badgeClass: 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40'
-        };
-    }
-
-    // 6. Moderate (25µs - 100µs) -> Yellow / Gold
-    if (nanos >= 25000) {
-        return {
-            color: '#eab308',
-            gradient: 'linear-gradient(135deg, #eab308e6, #ca8a04cc)',
-            glow: 'rgba(234, 179, 8, 0.5)',
-            tier: 'moderate',
-            isBottleneck: false,
-            badgeClass: 'bg-yellow-50 text-yellow-700 border-yellow-200/80 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-800/40'
-        };
-    }
-
-    // 7. Fast (10µs - 25µs) -> Lime / Chartreuse
-    if (nanos >= 10000) {
+    // 4. Fast (0.02 * threshold to 0.1 * threshold) -> Lime / Chartreuse
+    if (nanos >= threshold * 0.02) {
         return {
             color: '#84cc16',
             gradient: 'linear-gradient(135deg, #84cc16e6, #65a30dcc)',
             glow: 'rgba(132, 204, 22, 0.5)',
             tier: 'fast',
             isBottleneck: false,
+            textClass: 'text-lime-600 dark:text-lime-400',
             badgeClass: 'bg-lime-50 text-lime-700 border-lime-200/80 dark:bg-lime-950/40 dark:text-lime-400 dark:border-lime-800/40'
         };
     }
 
-    // 8. Optimal (5µs - 10µs) -> Emerald Green
-    if (nanos >= 5000) {
+    // 5. Optimal (0.004 * threshold to 0.02 * threshold) -> Emerald Green
+    if (nanos >= threshold * 0.004) {
         return {
             color: '#10b981',
             gradient: 'linear-gradient(135deg, #10b981e6, #059669cc)',
             glow: 'rgba(16, 185, 129, 0.5)',
             tier: 'optimal',
             isBottleneck: false,
+            textClass: 'text-emerald-600 dark:text-emerald-400',
             badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40'
         };
     }
 
-    // 9. Ultra-Fast (2µs - 5µs) -> Teal
-    if (nanos >= 2000) {
-        return {
-            color: '#14b8a6',
-            gradient: 'linear-gradient(135deg, #14b8a6e6, #0d9488cc)',
-            glow: 'rgba(20, 184, 166, 0.5)',
-            tier: 'ultrafast',
-            isBottleneck: false,
-            badgeClass: 'bg-teal-50 text-teal-700 border-teal-200/80 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800/40'
-        };
-    }
-
-    // 10. Sub-Micro / Instant (< 2µs) -> Cyan / Sky Blue
+    // 6. Sub-Micro / Instant (< 0.004 * threshold) -> Cyan / Sky Blue
     return {
         color: '#06b6d4',
         gradient: 'linear-gradient(135deg, #06b6d4e6, #0284c7cc)',
         glow: 'rgba(6, 182, 212, 0.5)',
         tier: 'submicro',
         isBottleneck: false,
+        textClass: 'text-cyan-600 dark:text-cyan-400',
         badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200/80 dark:bg-cyan-950/40 dark:text-cyan-400 dark:border-cyan-800/40'
     };
 }
@@ -500,6 +466,7 @@ export {
     downloadJson,
     resolveLatencyTheme,
     formatDuration,
+    formatDateTime,
     resolveDurationColor,
     resolveBeanLayer,
     calculateTimeTicks,

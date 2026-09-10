@@ -1,88 +1,106 @@
 <div class="flex flex-col h-full w-full max-w-full overflow-hidden p-4 sm:p-6 gap-4">
     <!-- Top Toolbar Header -->
     <header
-        class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl p-3.5 px-5 flex items-center justify-between gap-3 shadow-sm transition-colors duration-300 relative z-30 flex-shrink-0">
-        <div class="flex items-center gap-3 flex-shrink-0 flex-wrap">
-            <!-- Search Box with Suggestions -->
-            <div class="relative flex items-center">
-                <span
-                    class="material-symbols-outlined absolute left-3 text-gray-400 dark:text-gray-500 text-[18px]">search</span>
-                <input type="text" id="search-input" placeholder="Search bean in graph..."
-                    class="pl-9 pr-3 py-1.5 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all w-44 focus:w-60 shadow-xs" />
-                <div id="search-suggestions"
-                    class="absolute left-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl max-h-72 w-80 overflow-y-auto custom-scrollbar z-50 text-xs hidden">
+        class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3.5 px-4 sm:px-5 flex items-center justify-between gap-3 shadow-sm transition-colors duration-300 relative z-30 flex-shrink-0 min-w-0">
+        <!-- Zone 1 & 2 Container: Search, Context & Graph Controls -->
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 flex-wrap lg:flex-nowrap">
+            <!-- Zone 1: Search Box & Context Filter -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- Search Box with Suggestions -->
+                <div class="relative flex items-center">
+                    <span
+                        class="material-symbols-outlined absolute left-3 text-gray-400 dark:text-gray-500 text-[18px] pointer-events-none">search</span>
+                    <input type="text" id="search-input" placeholder="Search bean in graph..."
+                        class="pl-9 pr-7 sm:pr-8 py-1.5 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors w-45 sm:w-52 shadow-xs" />
+                    <kbd
+                        class="hidden sm:inline-flex items-center absolute right-2.5 px-1.5 py-0.5 text-[9px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded pointer-events-none">/</kbd>
+                    <div id="search-suggestions"
+                        class="absolute left-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl max-h-72 w-80 overflow-y-auto custom-scrollbar z-50 text-xs hidden">
+                    </div>
+                </div>
+
+                <!-- Context Filter Dropdown (hidden if single context) -->
+                <div id="context-filter-container" class="relative items-center hidden group">
+                    <div
+                        class="absolute left-2.5 flex items-center pointer-events-none text-primary dark:text-purple-400">
+                        <span class="material-symbols-outlined text-[16px]">domain</span>
+                    </div>
+                    <select id="context-filter"
+                        class="pl-8 pr-8 py-1.5 bg-white dark:bg-slate-950 border border-gray-200/90 dark:border-slate-800 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-semibold hover:border-primary/50 dark:hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer shadow-xs appearance-none max-w-[140px] truncate">
+                        <option value="">All Contexts</option>
+                    </select>
+                    <div
+                        class="absolute right-2.5 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+                        <span class="material-symbols-outlined text-[16px]">expand_more</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Context Filter Dropdown (hidden if single context) -->
-            <div id="context-filter-container" class="relative items-center hidden group">
-                <div class="absolute left-2.5 flex items-center pointer-events-none text-primary dark:text-purple-400">
-                    <span class="material-symbols-outlined text-[16px]">domain</span>
+            <!-- Vertical Divider -->
+            <div class="h-5 w-px bg-gray-200 dark:bg-slate-800 hidden sm:block flex-shrink-0"></div>
+
+            <!-- Zone 2: View Controls (Layout, Style, Graph Actions) -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- Layout Toggle group -->
+                <div class="flex items-center border border-gray-200 dark:border-slate-800 rounded-xl bg-gray-50/80 dark:bg-slate-950 p-1 whitespace-nowrap shadow-xs"
+                    title="Layout Direction">
+                    <button
+                        class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs"
+                        id="btn-tb" title="Top → Bottom Layout">
+                        <span class="material-symbols-outlined text-[15px]">south</span>
+                        <span class="hidden xl:inline">Top-Down</span>
+                    </button>
+                    <button
+                        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white"
+                        id="btn-lr" title="Left → Right Layout">
+                        <span class="material-symbols-outlined text-[15px]">east</span>
+                        <span class="hidden xl:inline">Left-Right</span>
+                    </button>
                 </div>
-                <select id="context-filter"
-                    class="pl-8 pr-8 py-1.5 bg-white dark:bg-slate-950 border border-gray-200/90 dark:border-slate-800 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-semibold hover:border-primary/50 dark:hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer shadow-xs appearance-none">
-                    <option value="">All Contexts</option>
-                </select>
-                <div class="absolute right-2.5 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
-                    <span class="material-symbols-outlined text-[16px]">expand_more</span>
+
+                <!-- Node Style Mode Toggle group -->
+                <div class="flex items-center border border-gray-200 dark:border-slate-800 rounded-xl bg-gray-50/80 dark:bg-slate-950 p-1 whitespace-nowrap shadow-xs"
+                    title="Node Visual Theme">
+                    <button
+                        class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs"
+                        id="btn-node-theme-tint" title="Soft Tinted Node Style">
+                        <span class="material-symbols-outlined text-[15px]">palette</span>
+                        <span class="hidden xl:inline">Tint</span>
+                    </button>
+                    <button
+                        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white"
+                        id="btn-node-theme-badge" title="Card with Icon Badge Style">
+                        <span class="material-symbols-outlined text-[15px]">view_quilt</span>
+                        <span class="hidden xl:inline">Badge</span>
+                    </button>
                 </div>
-            </div>
 
-            <div class="h-5 w-px bg-gray-200 dark:bg-slate-800 mx-0.5 hidden sm:block"></div>
-
-            <!-- Collapse Button -->
-            <button
-                class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/80 hover:border-gray-300 dark:hover:border-slate-600 shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                id="btn-collapse" title="Collapse All Nodes">
-                <span class="material-symbols-outlined text-[16px] text-gray-500 dark:text-gray-400">unfold_less</span>
-                Collapse
-            </button>
-
-            <!-- Layout Toggle group -->
-            <div
-                class="flex items-center border border-gray-200 dark:border-slate-800 rounded-xl bg-gray-50/80 dark:bg-slate-950 p-1 whitespace-nowrap shadow-xs">
+                <!-- Collapse Button -->
                 <button
-                    class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs"
-                    id="btn-tb" title="Top → Bottom Layout">
-                    <span class="material-symbols-outlined text-[15px]">south</span> Top-Down
+                    class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/80 hover:border-gray-300 dark:hover:border-slate-600 shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                    id="btn-collapse" title="Collapse All Tree Nodes">
+                    <span
+                        class="material-symbols-outlined text-[16px] text-gray-500 dark:text-gray-400">unfold_less</span>
+                    <span class="hidden lg:inline">Collapse</span>
                 </button>
+
+                <!-- Highlight Path Button -->
                 <button
-                    class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white"
-                    id="btn-lr" title="Left → Right Layout">
-                    <span class="material-symbols-outlined text-[15px]">east</span> Left-Right
+                    class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/80 hover:border-gray-300 dark:hover:border-slate-600 shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                    id="btn-highlight-path" title="Toggle Path Highlighting">
+                    <span
+                        class="material-symbols-outlined text-[16px] text-purple-500 dark:text-purple-400">insights</span>
+                    <span class="hidden lg:inline">Highlight Path</span>
                 </button>
             </div>
-
-            <!-- Node Style Mode Toggle group -->
-            <div
-                class="flex items-center border border-gray-200 dark:border-slate-800 rounded-xl bg-gray-50/80 dark:bg-slate-950 p-1 whitespace-nowrap shadow-xs">
-                <button
-                    class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs"
-                    id="btn-node-theme-tint" title="Soft Tinted Node Style">
-                    <span class="material-symbols-outlined text-[15px]">palette</span> Tint
-                </button>
-                <button
-                    class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white"
-                    id="btn-node-theme-badge" title="Card with Icon Badge Style">
-                    <span class="material-symbols-outlined text-[15px]">view_quilt</span> Badge
-                </button>
-            </div>
-
-            <!-- Highlight Path Button -->
-            <button
-                class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/80 hover:border-gray-300 dark:hover:border-slate-600 shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                id="btn-highlight-path" title="Toggle Path Highlighting">
-                <span class="material-symbols-outlined text-[16px] text-purple-500 dark:text-purple-400">insights</span>
-                Highlight Path
-            </button>
         </div>
 
-        <!-- Toolbar Right Statuses -->
+        <!-- Zone 3: Toolbar Right Statuses (Pinned, Never Moves Out) -->
         <div
-            class="flex items-center gap-2.5 text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0 whitespace-nowrap">
+            class="flex items-center gap-3 sm:gap-2.5 text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0 whitespace-nowrap ml-auto">
             <!-- Chunk Loading Progress Badge -->
             <div id="chunk-progress-badge"
-                class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-xl border border-amber-200/80 dark:border-amber-900/40 transition-all shadow-xs">
+                class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2.5 sm:px-3 py-1.5 rounded-xl border border-amber-200/80 dark:border-amber-900/40 transition-all shadow-xs">
                 <span id="chunk-progress-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                 <span><strong id="chunk-progress-text" class="font-bold font-mono">0 / 0</strong></span>
             </div>
@@ -92,14 +110,20 @@
                 class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-slate-700 rounded-xl shadow-xs hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all cursor-pointer font-semibold"
                 title="Reload Graph Data">
                 <span class="material-symbols-outlined text-[16px] text-gray-500 dark:text-gray-400">refresh</span>
-                <span>Reload</span>
+                <span class="hidden sm:inline">Reload</span>
             </button>
 
             <!-- Beans Count Pill -->
             <div
-                class="flex items-center gap-1.5 bg-primary/10 dark:bg-purple-950/40 text-primary dark:text-purple-300 px-3 py-1.5 rounded-xl border border-primary/20 shadow-xs font-semibold">
-                <span class="w-2 h-2 rounded-full bg-primary animate-none"></span>
-                <span>Beans: <strong id="beans-count" class="font-bold font-mono">0</strong></span>
+                class="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-indigo-50/60 dark:from-purple-950/40 dark:to-indigo-950/30 text-primary dark:text-purple-300 px-3 py-1.5 rounded-xl border border-primary/20 dark:border-purple-800/40 shadow-xs font-semibold select-none">
+                <span class="relative flex h-2 w-2">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                </span>
+                <span class="text-xs text-gray-600 dark:text-gray-300">Beans</span>
+                <span class="h-3 w-px bg-primary/20 dark:bg-purple-700/40"></span>
+                <strong id="beans-count" class="font-bold font-mono text-primary dark:text-purple-200">0</strong>
             </div>
         </div>
     </header>

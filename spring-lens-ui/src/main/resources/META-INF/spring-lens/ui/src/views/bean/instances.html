@@ -108,7 +108,7 @@
                     </button>
                     <button
                         class="time-quick-filter-btn px-2.5 py-1 rounded-lg font-semibold text-[11px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all cursor-pointer flex items-center gap-1"
-                        data-action="quick-filter" data-filter="bottlenecks" title="Beans taking > 50ms to initialize">
+                        data-action="quick-filter" data-filter="bottlenecks" title="Beans taking > 500µs to initialize">
                         <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Bottlenecks
                     </button>
                     <button
@@ -142,6 +142,26 @@
                         <option value="">Duration: All</option>
                         <option value="DESC">Slowest First</option>
                         <option value="ASC">Fastest First</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Bottleneck Threshold Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-bottleneck"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all"
+                        title="Configure Bean Initialization Bottleneck Threshold">
+                        <option value="100000">Bottleneck: &gt; 100µs</option>
+                        <option value="250000">Bottleneck: &gt; 250µs</option>
+                        <option value="500000" selected>Bottleneck: &gt; 500µs</option>
+                        <option value="1000000">Bottleneck: &gt; 1ms</option>
+                        <option value="2000000">Bottleneck: &gt; 2ms</option>
+                        <option value="5000000">Bottleneck: &gt; 5ms</option>
+                        <option value="10000000">Bottleneck: &gt; 10ms</option>
+                        <option value="50000000">Bottleneck: &gt; 50ms</option>
+                        <option value="100000000">Bottleneck: &gt; 100ms</option>
+                        <option value="custom">Custom Threshold...</option>
                     </select>
                     <span
                         class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
@@ -202,7 +222,7 @@
                             id="time-visible-count-badge">0</span>
                     </div>
                     <button id="time-btn-sort-toggle" data-action="toggle-sort"
-                        title="Click to cycle sort: Start Order -> Slowest Duration -> Name"
+                        title="Click to cycle sort: Start Order -> Slowest Duration"
                         class="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-purple-300 transition-colors cursor-pointer group">
                         <span id="time-sort-label">Order</span>
                         <span
@@ -327,19 +347,19 @@
                 <div class="flex items-center gap-4 text-[11px] text-gray-400 dark:text-gray-500 font-medium flex-wrap">
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-emerald-500"></span>
-                        <span>Fast &lt;20ms</span>
+                        <span id="time-legend-fast">Fast &lt;50µs</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-amber-500"></span>
-                        <span>Medium 20-50ms</span>
+                        <span id="time-legend-medium">Medium 50-200µs</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-orange-500"></span>
-                        <span>High 50-100ms</span>
+                        <span id="time-legend-high">High 200-500µs</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded bg-rose-500"></span>
-                        <span class="font-bold text-rose-500 dark:text-rose-400">&gt;100ms (Bottleneck)</span>
+                        <span class="font-bold text-rose-500 dark:text-rose-400" id="time-legend-bottleneck">&gt;500µs (Bottleneck)</span>
                     </div>
                     <div class="flex items-center gap-1 border-l border-gray-200 dark:border-slate-800 pl-3">
                         <span>Relative to boot</span>
@@ -762,7 +782,7 @@
                 data-field="bar">
                 <span class="truncate bar-inner-label" data-field="barLabel"></span>
             </div>
-            <!-- Bottleneck flame badge if > 100ms -->
+            <!-- Bottleneck flame badge if > 500µs -->
             <div class="absolute hidden items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-bold shadow-xs z-10 pointer-events-none"
                 data-field="bottleneckBadge">
                 <span class="material-symbols-outlined text-[11px]">local_fire_department</span>
@@ -785,16 +805,28 @@
                 <div class="min-w-0 flex-1">
                     <div class="font-bold text-xs text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate font-mono"
                         data-field="beanName">-</div>
-                    <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate"
-                        data-field="packageName">-</div>
+                    <div class="flex items-center gap-1.5 mt-0.5 min-w-0" data-field="createdAtContainer">
+                        <span
+                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 border border-gray-200/60 dark:border-slate-700/60 flex-shrink-0 tracking-tight">
+                            <span
+                                class="material-symbols-outlined text-[11px] text-gray-400 dark:text-gray-500">schedule</span>
+                            <span>Created</span>
+                        </span>
+                        <span class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate"
+                            data-field="createdAt" title="">-</span>
+                    </div>
                 </div>
             </div>
         </td>
 
         <!-- Type -->
         <td class="px-5 py-3.5 max-w-xs">
-            <span class="font-mono text-xs text-gray-600 dark:text-gray-300 truncate block" data-field="typeName"
-                title="">-</span>
+            <div class="min-w-0 flex-1">
+                <div class="font-mono font-semibold text-xs text-gray-800 dark:text-gray-200 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate"
+                    data-field="typeName" title="">-</div>
+                <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5"
+                    data-field="packageName" title="">-</div>
+            </div>
         </td>
 
         <!-- Scope -->
@@ -805,18 +837,19 @@
 
         <!-- Init Duration -->
         <td class="px-5 py-3.5 whitespace-nowrap">
-            <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[14px] text-gray-400" data-field="durationIcon">timer</span>
-                <span class="font-mono text-xs font-bold text-gray-800 dark:text-gray-200"
-                    data-field="durationFormatted">-</span>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border font-mono text-xs font-bold shadow-2xs transition-all"
+                data-field="durationBadge">
+                <span class="material-symbols-outlined text-[14px]" data-field="durationIcon">timer</span>
+                <span data-field="durationFormatted">-</span>
+                <span class="material-symbols-outlined text-[13px] hidden" data-field="bottleneckFlame" title="Bottleneck Bean">local_fire_department</span>
             </div>
         </td>
 
         <!-- Context ID -->
         <td class="px-5 py-3.5 whitespace-nowrap">
             <span
-                class="font-mono text-xs text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 truncate max-w-[120px] block"
-                data-field="contextId">-</span>
+                class="font-mono text-xs text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 truncate max-w-[150px] block"
+                data-field="contextId" title="">-</span>
         </td>
 
         <!-- Action -->

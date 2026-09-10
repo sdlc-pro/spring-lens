@@ -1186,8 +1186,8 @@ export default class DependencyGraph {
         localStorage.setItem('sl-layout', layoutMode);
 
         const isTopBottom = layoutMode === 'tb';
-        const activeClasses = 'bg-white text-gray-800 shadow-sm';
-        const inactiveClasses = 'text-gray-500 hover:text-gray-800';
+        const activeClasses = 'bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs font-bold';
+        const inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white font-medium';
 
         // Batch toggle button styling
         $('#btn-tb')
@@ -1261,6 +1261,13 @@ export default class DependencyGraph {
                 this._debouncedGraphSearch?.cancel();
                 $('#search-input').val('');
                 $('#search-suggestions').hide().empty();
+            }
+        });
+
+        $(document).off('keydown.graphSearchShortcut').on('keydown.graphSearchShortcut', (event) => {
+            if (event.key === '/' && !$(event.target).is('input, textarea, select')) {
+                event.preventDefault();
+                $('#search-input').focus();
             }
         });
 
@@ -1564,6 +1571,7 @@ export default class DependencyGraph {
         this.closeSidebar();
         this.clearFocusedNode();
         this._debouncedGraphSearch?.cancel();
+        $(document).off('keydown.graphSearchShortcut');
         $('#search-input').val('');
         $('#search-results').addClass('hidden').empty();
         $('#tip').removeClass('show');

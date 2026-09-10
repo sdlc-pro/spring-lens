@@ -136,21 +136,24 @@ export default class GraphTreeBuilder {
 
         const createChild = (name, kind) => {
             const depBean = findBeanFn(name, contextId);
-            return this._prepareBeanNode(name, depBean, kind);
+            return this._prepareBeanNode(name, depBean, { kind });
         };
 
         const deps = (dependencies || []).map(name => createChild(name, 'dependency'));
-        const dependentBean = (dependents || []).map(name => createChild(name, 'dependent'));
-        const children = [...deps, ...dependentBean];
+        const dependentBeans = (dependents || []).map(name => createChild(name, 'dependent'));
+        const targetNode = this._prepareBeanNode(beanName, { scope, role, type }, { kind: 'target' });
 
-        return this._prepareBeanNode(beanName, { scope, role, type }, {
-            kind: "target",
-            children
-        });
+        return {
+            target: targetNode,
+            dependencies: deps,
+            dependents: dependentBeans
+        };
     }
 
-    static _prepareBeanNode(name, beanData = {}, { kind = 'dependency', children = [] } = {}) {
+    static _prepareBeanNode(name, beanData = {}, options = {}) {
         const { type = 'N/A', scope = 'N/A', role = 'N/A' } = beanData || {};
+        const kind = typeof options === 'string' ? options : (options?.kind || 'dependency');
+        const children = (typeof options === 'object' && Array.isArray(options?.children)) ? options.children : [];
 
         return {
             name: this._displayName(name),

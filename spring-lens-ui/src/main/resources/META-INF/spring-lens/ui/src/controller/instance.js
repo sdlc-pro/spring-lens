@@ -12,6 +12,7 @@ import {
     debounce,
     downloadJson,
     formatDuration,
+    formatDateTime,
     Pagination,
     QueryParam,
     resolveAdviceFrozenClass,
@@ -41,6 +42,9 @@ export default class Instance {
         this.activeView = 'instance'; // 'instance' or 'table'
         this.activeSidebarTab = 'telemetry'; // 'telemetry' or 'proxy'
         this.zoomLevel = 1;
+
+        const savedThreshold = parseInt(localStorage.getItem('sl-bottleneck-threshold-nanos'), 10);
+        this.bottleneckThresholdNanos = Number.isFinite(savedThreshold) && savedThreshold > 0 ? savedThreshold : 500000;
 
         this.selectedBeanName = null;
         this.selectedContextId = null;
@@ -205,7 +209,7 @@ export default class Instance {
     }
 
     getDurationColor(initDurationNanos, maxDurationNanos = 0) {
-        return resolveDurationColor(initDurationNanos, maxDurationNanos);
+        return resolveDurationColor(initDurationNanos, maxDurationNanos, this.bottleneckThresholdNanos);
     }
 
     getBeanLayer(bean) {
@@ -411,7 +415,13 @@ export default class Instance {
         // Duration Text & Badge Styling
         const formattedDuration = this.formatDuration(initDurationNanos);
         const $duration = $row.find('[data-field="duration"]');
-        $duration.text(formattedDuration).addClass(durationStyle.badgeClass);
+        $duration.text(formattedDuration)
+            .addClass(durationStyle.badgeClass)
+            .css({
+                color: durationStyle.color,
+                backgroundColor: `${durationStyle.color}15`,
+                borderColor: `${durationStyle.color}35`
+            });
 
         // Waterfall Bar Layout (Left-aligned from 0, width scaled to init duration)
         const maxTime = this.maxTimeMs || 1;
@@ -491,7 +501,7 @@ export default class Instance {
         if (!clone?.firstElementChild) return null;
 
         const $row = $(clone.firstElementChild);
-        const { beanName, contextId, initDurationNanos, scope, type, layer } = inst;
+        const { beanName, contextId, initDurationNanos, scope, type, layer, createdAt } = inst;
 
         const isSelected = (this.selectedBeanName === beanName) && (this.selectedContextId === contextId);
         if (isSelected) {
@@ -514,27 +524,67 @@ export default class Instance {
             borderColor: `${layer?.color || '#8b5cf6'}30`
         });
 
-        // Display Name & Package Name / Subtitle
+        // Bean Name
         $row.find('[data-field="beanName"], [data-field="displayName"]')
             .text(GraphTreeBuilder._displayName(beanName))
             .attr('title', beanName);
 
-        const packagePart = type ? type.substring(0, type.lastIndexOf('.')) : '';
-        $row.find('[data-field="packageName"]').text(packagePart || type || '').attr('title', type || '');
-        $row.find('[data-field="typeName"], [data-field="type"]').text(type || 'N/A').attr('title', type || '');
+        // Created At
+        const formattedCreated = formatDateTime(createdAt);
+        const createdTooltip = createdAt ? `Created at: ${createdAt}` : '';
+        $row.find('[data-field="createdAt"], [data-field="created"]')
+            .text(formattedCreated)
+            .attr('title', createdTooltip);
+        $row.find('[data-field="createdAtContainer"]').attr('title', createdTooltip);
+
+        // Type & Package Name
+        const simpleType = type && type.includes('.') ? type.substring(type.lastIndexOf('.') + 1) : (type || '-');
+        const packagePart = type && type.includes('.') ? type.substring(0, type.lastIndexOf('.')) : '';
+        $row.find('[data-field="typeName"], [data-field="type"]').text(simpleType).attr('title', type || '');
+        $row.find('[data-field="packageName"]').text(packagePart || 'default package').attr('title', type || '');
 
         // Scope badge
         $row.find('[data-field="scopeBadge"], [data-field="scope"]')
             .text((scope || 'singleton').toUpperCase())
             .addClass(resolveScopeBadgeClass(scope));
 
-        // Duration formatted
+        // Duration formatted & latency badge
         const durationStyle = this.getDurationColor(initDurationNanos, this.maxDurationNanos);
         const formattedDuration = this.formatDuration(initDurationNanos);
-        $row.find('[data-field="durationFormatted"]').text(formattedDuration).addClass(durationStyle.badgeClass);
+        const $durationBadge = $row.find('[data-field="durationBadge"]');
+        const $durationFormatted = $row.find('[data-field="durationFormatted"]');
+        const $durationIcon = $row.find('[data-field="durationIcon"]');
+        const $bottleneckFlame = $row.find('[data-field="bottleneckFlame"]');
+
+        $durationFormatted.text(formattedDuration).css('color', durationStyle.color);
+        $durationIcon.css('color', durationStyle.color);
+
+        if ($durationBadge.length) {
+            $durationBadge
+                .addClass(durationStyle.badgeClass || '')
+                .css({
+                    color: durationStyle.color,
+                    backgroundColor: `${durationStyle.color}15`,
+                    borderColor: `${durationStyle.color}35`
+                })
+                .attr('title', `${(initDurationNanos || 0).toLocaleString()} ns (${durationStyle.tier || 'duration'})`);
+
+            if (durationStyle.isBottleneck) {
+                $durationBadge.addClass('font-extrabold ring-1').css('--tw-ring-color', `${durationStyle.color}50`);
+                $bottleneckFlame.removeClass('hidden').css('color', durationStyle.color);
+            } else {
+                $bottleneckFlame.addClass('hidden');
+            }
+        } else {
+            $durationFormatted
+                .addClass(durationStyle.textClass || 'text-gray-800 dark:text-gray-200')
+                .attr('title', `${(initDurationNanos || 0).toLocaleString()} ns`);
+            $durationIcon.addClass(durationStyle.textClass || 'text-gray-400');
+        }
 
         // Context ID
-        $row.find('[data-field="contextId"]').text(contextId || 'root');
+        const resolvedContext = contextId || 'root';
+        $row.find('[data-field="contextId"]').text(resolvedContext).attr('title', resolvedContext);
 
         return clone;
     }
@@ -653,12 +703,9 @@ export default class Instance {
                 queryParams.toString()
             );
 
-            if (proxyInfo) {
-                this.renderProxyInfo(proxyInfo);
-            } else {
-                this.renderProxyEmptyState();
-            }
+            this.renderProxyInfo(proxyInfo);
         } catch (error) {
+            console.warn('Failed to fetch or render proxy info:', error);
             // 404 not found
             this.renderProxyEmptyState();
         } finally {
@@ -708,18 +755,21 @@ export default class Instance {
         $advicesList.empty();
         if (advices.length === 0) {
             const emptyClone = TemplateEngine.clone('tpl-proxy-empty-item');
-            emptyClone.find('[data-field="message"]').text('No custom advices attached');
-            $advicesList.append(emptyClone);
+            if (emptyClone) {
+                const $emptyItem = $(emptyClone.firstElementChild);
+                $emptyItem.find('[data-field="message"]').text('No custom advices attached');
+                $advicesList.append($emptyItem);
+            }
         } else {
-            const fragment = $(document.createDocumentFragment());
             advices.forEach(adv => {
                 const shortName = adv.includes('.') ? adv.split('.').pop() : adv;
                 const clone = TemplateEngine.clone('tpl-proxy-item');
-                clone.find('[data-field="name"]').text(shortName).attr('title', adv);
-                clone.find('[data-field="badge"]').text('Advice');
-                fragment.append(clone);
+                if (!clone) return;
+                const $item = $(clone.firstElementChild);
+                $item.find('[data-field="name"]').text(shortName).attr('title', adv);
+                $item.find('[data-field="badge"]').text('Advice');
+                $advicesList.append($item);
             });
-            $advicesList.append(fragment);
         }
 
         // Interfaces list
@@ -728,18 +778,21 @@ export default class Instance {
         $interfacesList.empty();
         if (proxiedInterfaces.length === 0) {
             const emptyClone = TemplateEngine.clone('tpl-proxy-empty-item');
-            emptyClone.find('[data-field="message"]').text('No interfaces proxied (CGLIB class proxy)');
-            $interfacesList.append(emptyClone);
+            if (emptyClone) {
+                const $emptyItem = $(emptyClone.firstElementChild);
+                $emptyItem.find('[data-field="message"]').text('No interfaces proxied (CGLIB class proxy)');
+                $interfacesList.append($emptyItem);
+            }
         } else {
-            const fragment = $(document.createDocumentFragment());
             proxiedInterfaces.forEach(iface => {
                 const shortName = iface.includes('.') ? iface.split('.').pop() : iface;
                 const clone = TemplateEngine.clone('tpl-proxy-item');
-                clone.find('[data-field="name"]').text(shortName).attr('title', iface);
-                clone.find('[data-field="badge"]').text('Interface');
-                fragment.append(clone);
+                if (!clone) return;
+                const $item = $(clone.firstElementChild);
+                $item.find('[data-field="name"]').text(shortName).attr('title', iface);
+                $item.find('[data-field="badge"]').text('Interface');
+                $interfacesList.append($item);
             });
-            $interfacesList.append(fragment);
         }
 
         $('#time-sidebar-proxy-empty').addClass('hidden').hide();
@@ -803,7 +856,7 @@ export default class Instance {
             scope: capitalize(scope || 'singleton'),
             duration: this.formatDuration(initDurationNanos),
             context: contextId || 'root',
-            created: createdAt || 'N/A',
+            created: formatDateTime(createdAt),
             nanos: (initDurationNanos || 0).toLocaleString() + ' ns',
             definitionStatus: hasDefinition ? 'DEFINED' : 'DYNAMIC'
         };
@@ -840,6 +893,9 @@ export default class Instance {
             }
         });
 
+        const durationStyle = this.getDurationColor(initDurationNanos, this.maxDurationNanos);
+        $('#time-sidebar-duration').css('color', durationStyle.color);
+
         $('#time-sidebar-definition-status')
             .removeClass(ALL_DEFINITION_STATUS_CLASSES)
             .addClass(resolveDefinitionStatusBadgeClass(hasDefinition));
@@ -865,13 +921,16 @@ export default class Instance {
         this._bindZoomEvents();
         this._bindScrubberEvents();
         this._bindClickActionDelegation();
+        this._syncBottleneckDropdown();
+        this._updateBottleneckUI();
     }
 
     _initActionHandlers() {
         this._clickActions = {
             'refresh-data': ($target) => this._handleRefreshData($target),
             'reset-filters': () => {
-                this._resetFilterState();
+                this._resetFilterState(true);
+                this._updateSortHeaderIcons();
                 return this.fetchInstanceData();
             },
             'select-bean': ($target) => this._handleSelectBean($target),
@@ -902,7 +961,8 @@ export default class Instance {
             'time-filter-size': (val) => {
                 this.pageSize = parseInt(val, 10) || 20;
                 return this._resetPageAndFetch();
-            }
+            },
+            'time-filter-bottleneck': (val) => this._handleBottleneckThresholdChange(val)
         };
     }
 
@@ -998,6 +1058,104 @@ export default class Instance {
     _syncSortDropdowns() {
         $('#time-filter-duration').val(this.sortBy === 'initDurationNanos' ? this.sortDir : '');
         $('#time-filter-created').val(this.sortBy === 'createdAt' ? this.sortDir : '');
+
+        if (this.sortBy === 'initDurationNanos') {
+            $('#time-sort-label').text('Duration');
+            $('#time-sort-icon').text(this.sortDir === 'ASC' ? 'arrow_upward' : 'arrow_downward');
+        } else {
+            $('#time-sort-label').text('Order');
+            $('#time-sort-icon').text('swap_vert');
+        }
+    }
+
+    _handleBottleneckThresholdChange(val) {
+        if (val === 'custom') {
+            const currentFormatted = this.formatDuration(this.bottleneckThresholdNanos);
+            const input = prompt('Enter custom bottleneck threshold (e.g. "750µs", "2.5ms", "1000000ns", or number in µs):', currentFormatted);
+            if (!input) {
+                this._syncBottleneckDropdown();
+                return;
+            }
+
+            const parsedNanos = this._parseDurationToNanos(input);
+            if (!parsedNanos || parsedNanos <= 0) {
+                alert('Invalid duration value. Please enter a duration like "800µs" or "3ms".');
+                this._syncBottleneckDropdown();
+                return;
+            }
+
+            this.bottleneckThresholdNanos = parsedNanos;
+        } else {
+            const nanos = parseInt(val, 10);
+            if (Number.isFinite(nanos) && nanos > 0) {
+                this.bottleneckThresholdNanos = nanos;
+            }
+        }
+
+        localStorage.setItem('sl-bottleneck-threshold-nanos', this.bottleneckThresholdNanos);
+        this._syncBottleneckDropdown();
+        this._updateBottleneckUI();
+        this.applyLocalFilters();
+        this.renderCurrentView();
+
+        if (this.selectedBeanName) {
+            const selectedInst = this.instances?.find(i => i.beanName === this.selectedBeanName && (!this.selectedContextId || i.contextId === this.selectedContextId));
+            if (selectedInst) {
+                this.renderSidebarDetails(selectedInst);
+            }
+        }
+    }
+
+    _parseDurationToNanos(str) {
+        if (!str) return null;
+        const trimmed = String(str).trim().toLowerCase().replace(/\s+/g, '');
+        if (/^\d+(\.\d+)?$/.test(trimmed)) {
+            const num = parseFloat(trimmed);
+            return num < 10000 ? Math.round(num * 1000) : Math.round(num);
+        }
+        if (trimmed.endsWith('ns')) {
+            return Math.round(parseFloat(trimmed));
+        }
+        if (trimmed.endsWith('us') || trimmed.endsWith('µs')) {
+            return Math.round(parseFloat(trimmed) * 1000);
+        }
+        if (trimmed.endsWith('ms')) {
+            return Math.round(parseFloat(trimmed) * 1e6);
+        }
+        if (trimmed.endsWith('s')) {
+            return Math.round(parseFloat(trimmed) * 1e9);
+        }
+        return null;
+    }
+
+    _syncBottleneckDropdown() {
+        const val = String(this.bottleneckThresholdNanos);
+        const $select = $('#time-filter-bottleneck');
+        if ($select.length === 0) return;
+
+        let $opt = $select.find(`option[value="${val}"]`);
+        if ($opt.length > 0) {
+            $select.val(val);
+        } else {
+            let $customOpt = $select.find('option[data-custom="true"]');
+            if ($customOpt.length === 0) {
+                $customOpt = $('<option data-custom="true"></option>').insertBefore($select.find('option[value="custom"]'));
+            }
+            $customOpt.val(val).text(`Bottleneck: > ${this.formatDuration(this.bottleneckThresholdNanos)} (Custom)`).prop('selected', true);
+            $select.val(val);
+        }
+    }
+
+    _updateBottleneckUI() {
+        const threshold = this.bottleneckThresholdNanos;
+        const formatted = this.formatDuration(threshold);
+
+        $('#time-legend-bottleneck').text(`>${formatted} (Bottleneck)`);
+        $('#time-legend-high').text(`High ${this.formatDuration(threshold * 0.4)}-${formatted}`);
+        $('#time-legend-medium').text(`Medium ${this.formatDuration(threshold * 0.1)}-${this.formatDuration(threshold * 0.4)}`);
+        $('#time-legend-fast').text(`Fast <${this.formatDuration(threshold * 0.1)}`);
+
+        $('[data-action="quick-filter"][data-filter="bottlenecks"]').attr('title', `Beans taking > ${formatted} to initialize`);
     }
 
     _bindSortHeaders() {
@@ -1185,18 +1343,9 @@ export default class Instance {
         if (this.sortBy === 'createdAt') {
             this.sortBy = 'initDurationNanos';
             this.sortDir = 'DESC';
-            $('#time-sort-label').text('Duration');
-            $('#time-sort-icon').text('arrow_downward');
-        } else if (this.sortBy === 'initDurationNanos') {
-            this.sortBy = 'beanName';
-            this.sortDir = 'ASC';
-            $('#time-sort-label').text('Name');
-            $('#time-sort-icon').text('sort_by_alpha');
         } else {
             this.sortBy = 'createdAt';
             this.sortDir = 'ASC';
-            $('#time-sort-label').text('Order');
-            $('#time-sort-icon').text('swap_vert');
         }
 
         this._syncSortDropdowns();
@@ -1294,7 +1443,9 @@ export default class Instance {
         return this.fetchInstanceData();
     }
 
-    _resetFilterState() {
+    _resetFilterState(preserveView = false) {
+        const targetView = preserveView ? this.activeView : 'instance';
+
         Object.assign(this, {
             searchQuery: '',
             minDurationMs: 0,
@@ -1304,7 +1455,7 @@ export default class Instance {
             sortBy: 'createdAt',
             sortDir: 'ASC',
             zoomLevel: 1,
-            activeView: 'instance',
+            activeView: targetView,
             activeSidebarTab: 'telemetry',
             selectedBeanName: null,
             selectedContextId: null,
@@ -1328,16 +1479,20 @@ export default class Instance {
         $('#time-sort-label').text('Order');
         $('#time-sort-icon').text('swap_vert');
         $('#time-zoom-level-badge').text('100%');
+        this._syncBottleneckDropdown();
+        this._updateBottleneckUI();
 
-        // Reset View Toggle buttons & Card containers to default instance view
-        $('#time-view-btn-instance')
-            .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
-            .removeClass('text-gray-500 dark:text-gray-400 font-medium');
-        $('#time-view-btn-table')
-            .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
-            .addClass('text-gray-500 dark:text-gray-400 font-medium');
-        $('#instance-gantt-card').removeClass('hidden');
-        $('#instance-table-card').addClass('hidden');
+        if (!preserveView) {
+            // Reset View Toggle buttons & Card containers to default instance view
+            $('#time-view-btn-instance')
+                .addClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
+                .removeClass('text-gray-500 dark:text-gray-400 font-medium');
+            $('#time-view-btn-table')
+                .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
+                .addClass('text-gray-500 dark:text-gray-400 font-medium');
+            $('#instance-gantt-card').removeClass('hidden');
+            $('#instance-table-card').addClass('hidden');
+        }
 
         $('.time-quick-filter-btn')
             .removeClass('bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs')
@@ -1349,8 +1504,11 @@ export default class Instance {
 
     _downloadReport() {
         const reportData = {
-            title: 'SpringLens Bean Instantiation Report',
+            appName: 'Spring Lens',
+            reportType: 'Bean Instances Telemetry',
             timestamp: new Date().toISOString(),
+            bottleneckThreshold: this.formatDuration(this.bottleneckThresholdNanos),
+            bottleneckThresholdNanos: this.bottleneckThresholdNanos,
             summary: this.instanceSummary,
             totalElements: this.paginationState.totalElements,
             instances: this.instances
@@ -1380,6 +1538,6 @@ export default class Instance {
         this._debouncedSearch?.cancel();
         $(document).off('.instanceController');
         $(window).off('.instanceController');
-        $('#time-search-input, #inst-search-input, #time-zoom-slider, #time-filter-created, #time-filter-size, #instance-scroll-container, #time-filter-duration, #time-sort-by, #time-details-sidebar').off('.instanceController');
+        $('#time-search-input, #inst-search-input, #time-zoom-slider, #time-filter-created, #time-filter-size, #instance-scroll-container, #time-filter-duration, #time-filter-bottleneck, #time-sort-by, #time-details-sidebar').off('.instanceController');
     }
 }
