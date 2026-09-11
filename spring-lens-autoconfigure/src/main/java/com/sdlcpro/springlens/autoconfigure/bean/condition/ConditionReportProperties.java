@@ -65,6 +65,7 @@ public class ConditionReportProperties {
      */
     public static final class Exclude {
         private Set<String> packagePatterns = new LinkedHashSet<>();
+        private boolean frameworkInternal;
 
         /**
          * @return the set of package patterns to exclude
@@ -75,6 +76,14 @@ public class ConditionReportProperties {
 
         public void setPackagePatterns(Set<String> packagePatterns) {
             this.packagePatterns = packagePatterns;
+        }
+
+        public boolean isFrameworkInternal() {
+            return frameworkInternal;
+        }
+
+        public void setFrameworkInternal(boolean frameworkInternal) {
+            this.frameworkInternal = frameworkInternal;
         }
     }
 }

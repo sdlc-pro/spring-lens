@@ -1,0 +1,933 @@
+<!-- Main Content Container -->
+<div class="flex-1 overflow-hidden p-4 sm:p-6 flex items-stretch gap-6 max-w-full min-h-0 h-full">
+    <!-- Center Content Column -->
+    <div class="flex-1 flex flex-col gap-4 min-w-0 h-full min-h-0 transition-all duration-300 ease-in-out">
+
+        <!-- Executive Telemetry Summary Strip (KPIs from beanInstanceSummaryApi) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 flex-shrink-0" id="instance-kpi-strip">
+            <!-- Card 1: Total Created Instances -->
+            <div
+                class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between group hover:border-primary/40 transition-all">
+                <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-1.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Total Instances</span>
+                    <span class="material-symbols-outlined text-[16px] text-purple-500">inventory_2</span>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-lg font-black font-mono text-gray-900 dark:text-white"
+                        id="time-kpi-total-instances">-</span>
+                    <span class="text-[10.5px] text-gray-400 font-medium">created</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Instances With / Without Definition -->
+            <div
+                class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all">
+                <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-1.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wider">With Definition</span>
+                    <span class="material-symbols-outlined text-[16px] text-emerald-500">verified</span>
+                </div>
+                <div class="flex items-baseline justify-between gap-1">
+                    <span class="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400"
+                        id="time-kpi-with-def">-</span>
+                    <span
+                        class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 font-bold truncate"
+                        id="time-kpi-without-def">0 dynamic</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Total Initialization Duration -->
+            <div
+                class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between group hover:border-blue-500/40 transition-all">
+                <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-1.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Total Duration</span>
+                    <span class="material-symbols-outlined text-[16px] text-blue-500">timer</span>
+                </div>
+                <div class="flex items-baseline justify-between gap-1">
+                    <span class="text-lg font-black font-mono text-blue-600 dark:text-blue-400"
+                        id="time-kpi-total-duration">-</span>
+                    <span class="text-[10px] font-mono text-gray-400 truncate"
+                        id="time-kpi-total-duration-nanos">-</span>
+                </div>
+            </div>
+
+            <!-- Card 4: Max Initialization Duration -->
+            <div
+                class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between group hover:border-rose-500/40 transition-all">
+                <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-1.5">
+                    <span
+                        class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 text-rose-500 dark:text-rose-400">
+                        Max Duration
+                    </span>
+                    <span class="material-symbols-outlined text-[16px] text-rose-500">speed</span>
+                </div>
+                <div class="flex items-baseline justify-between gap-1">
+                    <span class="text-lg font-black font-mono text-rose-600 dark:text-rose-400"
+                        id="time-kpi-max-duration">-</span>
+                    <span class="text-[10px] font-mono text-gray-400 truncate" id="time-kpi-max-duration-nanos">-</span>
+                </div>
+            </div>
+
+            <!-- Card 5: Average Initialization Duration -->
+            <div
+                class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between group hover:border-indigo-500/40 transition-all">
+                <div class="flex items-center justify-between text-gray-500 dark:text-gray-400 mb-1.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Average Duration</span>
+                    <span class="material-symbols-outlined text-[16px] text-indigo-500">query_stats</span>
+                </div>
+                <div class="flex items-baseline justify-between gap-1">
+                    <span class="text-lg font-black font-mono text-indigo-600 dark:text-indigo-400"
+                        id="time-kpi-avg-duration">-</span>
+                    <span class="text-[10px] font-mono text-gray-400 truncate" id="time-kpi-avg-duration-nanos">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Controls Bar: Unified Search, Quick Filters, Dropdowns, Reset, and View Switcher -->
+        <div
+            class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-xs flex-shrink-0">
+            <div class="flex items-center gap-2.5 flex-wrap flex-1 min-w-0">
+                <!-- Search Input -->
+                <div class="relative min-w-[220px] max-w-xs flex-1">
+                    <span
+                        class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-[18px]">search</span>
+                    <input type="text" id="time-search-input" placeholder="Search by bean name, package, or type..."
+                        class="w-full pl-9 pr-8 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all">
+                    <button id="time-search-clear" data-action="clear-search" title="Clear search"
+                        class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">cancel</span>
+                    </button>
+                </div>
+
+                <!-- Quick Filter Buttons -->
+                <!--<div
+                    class="flex items-center gap-1.5 bg-gray-100/80 dark:bg-slate-950/80 p-1 rounded-xl border border-gray-200/60 dark:border-slate-800 text-xs">
+                    <button
+                        class="time-quick-filter-btn px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-white dark:bg-slate-800 text-primary dark:text-purple-300 shadow-xs cursor-pointer"
+                        data-action="quick-filter" data-filter="all">
+                        All
+                    </button>
+                    <button
+                        class="time-quick-filter-btn px-2.5 py-1 rounded-lg font-semibold text-[11px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                        data-action="quick-filter" data-filter="bottlenecks" title="Beans taking > 500µs to initialize">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Bottlenecks
+                    </button>
+                    <button
+                        class="time-quick-filter-btn px-2.5 py-1 rounded-lg font-semibold text-[11px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all cursor-pointer"
+                        data-action="quick-filter" data-filter="slow" title="Beans taking 10-50ms">
+                        10-50ms
+                    </button>
+                    <button
+                        class="time-quick-filter-btn px-2.5 py-1 rounded-lg font-semibold text-[11px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all cursor-pointer"
+                        data-action="quick-filter" data-filter="fast" title="Fast beans (<10ms)">
+                        &lt;10ms
+                    </button>
+                </div>-->
+
+                <!-- Created / Order Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-created"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
+                        <option value="">Created: All</option>
+                        <option value="ASC">Startup Order (Oldest First)</option>
+                        <option value="DESC">Newest First</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Init Duration Filter Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-duration"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
+                        <option value="">Duration: All</option>
+                        <option value="DESC">Slowest First</option>
+                        <option value="ASC">Fastest First</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Bottleneck Threshold Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-bottleneck"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all"
+                        title="Configure Bean Initialization Bottleneck Threshold">
+                        <option value="100000">Bottleneck: &gt; 100µs</option>
+                        <option value="250000">Bottleneck: &gt; 250µs</option>
+                        <option value="500000" selected>Bottleneck: &gt; 500µs</option>
+                        <option value="1000000">Bottleneck: &gt; 1ms</option>
+                        <option value="2000000">Bottleneck: &gt; 2ms</option>
+                        <option value="5000000">Bottleneck: &gt; 5ms</option>
+                        <option value="10000000">Bottleneck: &gt; 10ms</option>
+                        <option value="50000000">Bottleneck: &gt; 50ms</option>
+                        <option value="100000000">Bottleneck: &gt; 100ms</option>
+                        <option value="custom">Custom Threshold...</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Page Size Dropdown -->
+                <div class="relative">
+                    <select id="time-filter-size"
+                        class="appearance-none pl-3 pr-7 py-1.5 bg-gray-50 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all">
+                        <option value="10">10 / page</option>
+                        <option value="20" selected>20 / page</option>
+                        <option value="50">50 / page</option>
+                        <option value="100">100 / page</option>
+                    </select>
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-[16px]">expand_more</span>
+                </div>
+
+                <!-- Reset Filters Button -->
+                <button id="time-btn-reset-filters" data-action="reset-filters" title="Reset all filters and search"
+                    class="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-xl px-2.5 py-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all cursor-pointer shadow-2xs">
+                    <span class="material-symbols-outlined text-[15px]">filter_alt_off</span> Reset
+                </button>
+            </div>
+
+            <!-- Right Controls: View Switcher Toggle -->
+            <div class="flex items-center gap-2 self-start lg:self-auto flex-shrink-0">
+                <!-- View Switcher Toggle (instance vs Table) -->
+                <div
+                    class="flex items-center bg-gray-100/90 dark:bg-slate-950/90 p-1 rounded-xl border border-gray-200/70 dark:border-slate-800 shadow-2xs">
+                    <button id="time-view-btn-instance" data-action="switch-view" data-view="instance"
+                        class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all bg-white dark:bg-slate-800 text-primary dark:text-purple-300 shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-[15px]">waterfall_chart</span> Waterfall
+                    </button>
+                    <button id="time-view-btn-table" data-action="switch-view" data-view="table"
+                        class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-all cursor-pointer">
+                        <span class="material-symbols-outlined text-[15px]">table_rows</span> Table
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- instance GANTT VIEW CONTAINER -->
+        <div id="instance-gantt-card"
+            class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-xs flex flex-col flex-1 min-h-0 overflow-hidden transition-colors duration-300">
+
+            <!-- Subheader: Left Manifest Header & Right Zoom / Precision Controls (Static Subheader) -->
+            <div
+                class="px-5 py-3 border-b border-gray-200/90 dark:border-slate-800 flex items-center justify-between bg-gray-50/70 dark:bg-slate-950/70 flex-shrink-0">
+                <!-- Left Header: Column Titles -->
+                <div class="flex items-center justify-between w-[340px] pr-6 flex-shrink-0">
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">Bean
+                            Instance</span>
+                        <span
+                            class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-gray-200/80 dark:bg-slate-800 text-gray-600 dark:text-gray-300"
+                            id="time-visible-count-badge">0</span>
+                    </div>
+                    <button id="time-btn-sort-toggle" data-action="toggle-sort"
+                        title="Click to cycle sort: Start Order -> Slowest Duration"
+                        class="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-purple-300 transition-colors cursor-pointer group">
+                        <span id="time-sort-label">Order</span>
+                        <span
+                            class="material-symbols-outlined text-[15px] text-gray-400 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors"
+                            id="time-sort-icon">swap_vert</span>
+                    </button>
+                </div>
+
+                <!-- Right Header: Interactive Time Controls & Zoom -->
+                <div class="flex items-center gap-3">
+                    <!-- Zoom & Scale Controls -->
+                    <div
+                        class="flex items-center gap-2 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-gray-200/80 dark:border-slate-800 shadow-2xs">
+                        <span
+                            class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Zoom</span>
+                        <button id="time-btn-zoom-out" data-action="zoom-out" title="Zoom out (−)"
+                            class="w-5 h-5 flex items-center justify-center rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer text-sm font-bold">
+                            −
+                        </button>
+                        <input type="range" id="time-zoom-slider" min="1" max="4" step="0.25" value="1"
+                            class="w-20 h-1.5 bg-gray-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary">
+                        <button id="time-btn-zoom-in" data-action="zoom-in" title="Zoom in (+)"
+                            class="w-5 h-5 flex items-center justify-center rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer text-sm font-bold">
+                            +
+                        </button>
+                        <span
+                            class="text-[10px] font-mono font-bold text-primary dark:text-purple-300 min-w-[32px] text-right"
+                            id="time-zoom-level-badge">100%</span>
+                        <button id="time-btn-zoom-reset" data-action="zoom-reset" title="Fit to 100% screen view"
+                            class="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer ml-0.5">
+                            <span class="material-symbols-outlined text-[15px]">crop_free</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gantt Scroll Area & Waterfall Grid (Scrollable Body) -->
+            <div class="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative min-h-0 select-none"
+                id="instance-scroll-container">
+                <div class="min-w-full inline-block relative" id="instance-inner-container" style="min-width: 100%;">
+
+                    <!-- Dynamic Time Axis / Ruler Row (Sticky Header inside scroll area) -->
+                    <div
+                        class="flex items-center border-b border-gray-200 dark:border-slate-800 py-2 px-5 bg-gray-50 dark:bg-slate-950 sticky top-0 z-30 shadow-xs">
+                        <!-- Left Spacer matching bean info column -->
+                        <div
+                            class="w-[340px] flex-shrink-0 pr-6 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                            <span>Bean & Layer</span>
+                            <span class="pr-2">Init Latency</span>
+                        </div>
+                        <!-- Ruler Ticks Container -->
+                        <div class="flex-1 relative h-6 text-[10.5px] font-mono font-semibold text-gray-500 dark:text-gray-400 min-w-[500px]"
+                            id="instance-ruler-ticks">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Waterfall Rows Container -->
+                    <div class="relative divide-y divide-gray-100/90 dark:divide-slate-800/60"
+                        id="instance-waterfall-rows">
+                        <!-- Vertical Dashed Grid Lines Overlay -->
+                        <div class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="instance-grid-lines">
+                            <!-- Dynamic vertical dashed lines -->
+                        </div>
+
+                        <!-- Scrubber Needle Guide -->
+                        <div class="instance-scrubber-needle opacity-0" id="instance-scrubber-needle">
+                            <div class="instance-scrubber-badge" id="instance-scrubber-badge">+0.00ms</div>
+                        </div>
+
+                        <!-- Rows populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Load More / Remaining count (Static Footer Row) -->
+            <div class="px-5 py-2.5 border-t border-gray-100 dark:border-slate-800/80 flex items-center justify-between bg-gray-50/50 dark:bg-slate-950/50 flex-shrink-0 z-10"
+                id="instance-footer-row">
+                <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono" id="time-loaded-summary-text">
+                    Showing beans in chronological sequence
+                </div>
+                <button id="time-btn-load-more" data-action="load-more"
+                    class="flex items-center gap-1.5 text-xs font-bold text-primary dark:text-purple-300 hover:text-purple-700 dark:hover:text-purple-200 transition-colors cursor-pointer py-1 px-3 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/40 shadow-2xs">
+                    <span class="material-symbols-outlined text-[16px]">add</span>
+                    <span id="time-load-more-text">+ 0 more beans</span>
+                </button>
+            </div>
+
+            <!-- Footer: Legend & Relative Start Note (Static Card Footer) -->
+            <div
+                class="px-5 py-3 border-t border-gray-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900 flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                <!-- Layer Legend dots -->
+                <div class="flex items-center gap-3.5 flex-wrap">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Layers:</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#8b5cf6] shadow-2xs"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">Configuration</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#3b82f6] shadow-2xs"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">Infrastructure</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-2xs"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">Data Access</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-2xs"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">Business Logic</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#ef4444] shadow-2xs"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">Web Layer</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#94a3b8] shadow-2xs"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">Other</span>
+                    </div>
+                </div>
+
+                <!-- Latency Benchmark Legend & Info note on right -->
+                <div class="flex items-center gap-4 text-[11px] text-gray-400 dark:text-gray-500 font-medium flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded bg-emerald-500"></span>
+                        <span id="time-legend-fast">Fast &lt;50µs</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded bg-amber-500"></span>
+                        <span id="time-legend-medium">Medium 50-200µs</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded bg-orange-500"></span>
+                        <span id="time-legend-high">High 200-500µs</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded bg-rose-500"></span>
+                        <span class="font-bold text-rose-500 dark:text-rose-400" id="time-legend-bottleneck">&gt;500µs (Bottleneck)</span>
+                    </div>
+                    <div class="flex items-center gap-1 border-l border-gray-200 dark:border-slate-800 pl-3">
+                        <span>Relative to boot</span>
+                        <span class="material-symbols-outlined text-[13px]">info</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TABLE VIEW CONTAINER (Hidden by default) -->
+        <div id="instance-table-card"
+            class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden transition-colors duration-300 hidden">
+
+            <!-- Table Container (Scrollable Table Body) -->
+            <div class="overflow-x-auto overflow-y-auto flex-1 min-h-0 custom-scrollbar relative">
+                <table class="w-full text-left border-collapse min-w-[850px]">
+                    <thead class="sticky top-0 z-10 bg-gray-50/95 dark:bg-slate-800/95 backdrop-blur-xs shadow-xs">
+                        <tr
+                            class="border-b border-gray-100 dark:border-slate-800 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none">
+                            <th class="px-5 py-3.5 cursor-pointer hover:text-primary transition-colors th-sortable bg-gray-50/95 dark:bg-slate-800/95"
+                                data-sort="beanName">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Bean Name</span>
+                                    <span class="material-symbols-outlined text-[15px] sort-icon text-gray-400"
+                                        data-col="beanName">unfold_more</span>
+                                </div>
+                            </th>
+                            <th class="px-5 py-3.5 cursor-pointer hover:text-primary transition-colors th-sortable bg-gray-50/95 dark:bg-slate-800/95"
+                                data-sort="type">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Type</span>
+                                    <span class="material-symbols-outlined text-[15px] sort-icon text-gray-400"
+                                        data-col="type">unfold_more</span>
+                                </div>
+                            </th>
+                            <th class="px-5 py-3.5 cursor-pointer hover:text-primary transition-colors th-sortable bg-gray-50/95 dark:bg-slate-800/95"
+                                data-sort="scope">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Scope</span>
+                                    <span class="material-symbols-outlined text-[15px] sort-icon text-gray-400"
+                                        data-col="scope">unfold_more</span>
+                                </div>
+                            </th>
+                            <th class="px-5 py-3.5 cursor-pointer hover:text-primary transition-colors th-sortable bg-gray-50/95 dark:bg-slate-800/95"
+                                data-sort="initDurationNanos">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Duration</span>
+                                    <span class="material-symbols-outlined text-[15px] sort-icon text-gray-400"
+                                        data-col="initDurationNanos">unfold_more</span>
+                                </div>
+                            </th>
+                            <th class="px-5 py-3.5 cursor-pointer hover:text-primary transition-colors th-sortable bg-gray-50/95 dark:bg-slate-800/95"
+                                data-sort="contextId">
+                                <div class="flex items-center gap-1.5">
+                                    <span>Context ID</span>
+                                    <span class="material-symbols-outlined text-[15px] sort-icon text-gray-400"
+                                        data-col="contextId">unfold_more</span>
+                                </div>
+                            </th>
+                            <th class="px-5 py-3.5 w-16 text-right font-bold bg-gray-50/95 dark:bg-slate-800/95">Action
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody
+                        class="divide-y divide-gray-100 dark:divide-slate-800/80 text-[13px] text-gray-600 dark:text-gray-300"
+                        id="beanInstanceTableBody">
+                        <!-- Table rows populated dynamically by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Footer (Static Table Footer) -->
+            <div
+                class="px-5 py-3.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 mt-auto flex-shrink-0 z-10">
+                <div class="text-xs font-medium text-gray-500 dark:text-gray-400" id="inst-pagination-info">Showing 0 to
+                    0 of 0 instances</div>
+                <div class="flex items-center gap-1.5" id="inst-pagination-buttons">
+                    <!-- Dynamic page buttons -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right Sidebar - Instantiation Details & Telemetry -->
+    <div class="transition-all duration-300 ease-in-out w-0 max-w-0 opacity-0 pointer-events-none -mr-6 border-0 bg-white dark:bg-slate-900 border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-lg flex flex-col flex-shrink-0 h-full overflow-hidden"
+        id="time-details-sidebar">
+        <div class="w-[380px] h-full flex flex-col">
+            <!-- Sidebar Header -->
+            <div
+                class="px-4 py-3.5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-purple-50/60 via-indigo-50/30 to-transparent dark:from-purple-950/20 dark:via-slate-900/40 dark:to-transparent flex-shrink-0">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div
+                        class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 via-purple-500/15 to-transparent text-primary dark:text-purple-300 flex items-center justify-center ring-1 ring-primary/25 shadow-2xs flex-shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">timelapse</span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h3
+                                class="font-black text-xs text-gray-900 dark:text-white uppercase tracking-wider truncate">
+                                Instance Telemetry</h3>
+                            <span
+                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-50 text-primary border border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active
+                            </span>
+                        </div>
+                        <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-medium truncate">Startup &
+                            Duration Breakdown</p>
+                    </div>
+                </div>
+                <button
+                    class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer group flex-shrink-0"
+                    id="time-close-sidebar" data-action="close-sidebar" title="Close sidebar">
+                    <span
+                        class="material-symbols-outlined text-[18px] group-hover:rotate-90 transition-transform duration-200">close</span>
+                </button>
+            </div>
+
+            <!-- Identity Hero Card -->
+            <div
+                class="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/40 dark:bg-slate-900/40 space-y-3 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-primary dark:text-purple-300 flex items-center justify-center border border-primary/25 shadow-2xs flex-shrink-0"
+                        id="time-sidebar-icon-container">
+                        <span class="material-symbols-outlined text-[20px]" id="time-sidebar-icon">schema</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="font-mono font-bold text-[13px] text-gray-900 dark:text-white truncate leading-tight select-all cursor-default"
+                            id="time-sidebar-name" data-field="name" title="">-</div>
+                        <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5 cursor-default select-all"
+                            id="time-sidebar-type" data-field="type" title="">-</div>
+                    </div>
+                </div>
+
+                <!-- 2 Mini Summary Metric Badges (Scope, Duration) -->
+                <div
+                    class="grid grid-cols-2 gap-2 text-center bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-2xs">
+                    <div>
+                        <div class="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
+                            Scope</div>
+                        <div class="text-[11.5px] font-mono font-bold text-purple-600 dark:text-purple-300 truncate mt-0.5"
+                            id="time-sidebar-scope" data-field="scope" title="">-</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">
+                            Duration</div>
+                        <div class="text-[11.5px] font-mono font-bold text-primary dark:text-purple-300 truncate mt-0.5"
+                            id="time-sidebar-duration" data-field="duration" title="">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Segmented 2-Tab Switcher (Telemetry / AOP Proxy) -->
+            <div class="px-4 pt-3 pb-1 border-b border-gray-100 dark:border-slate-800 flex-shrink-0">
+                <div
+                    class="grid grid-cols-2 p-1 bg-gray-100/80 dark:bg-slate-950 rounded-xl border border-gray-200/60 dark:border-slate-800/80">
+                    <button id="time-sidebar-tab-telemetry" data-action="switch-sidebar-tab" data-tab="telemetry"
+                        class="time-sidebar-tab-btn py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 text-primary dark:text-purple-300 shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-[15px]">analytics</span> Telemetry
+                    </button>
+                    <button id="time-sidebar-tab-proxy" data-action="switch-sidebar-tab" data-tab="proxy"
+                        class="time-sidebar-tab-btn py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 cursor-pointer">
+                        <span class="material-symbols-outlined text-[15px]">security</span> AOP Proxy
+                        <span id="time-sidebar-tab-proxy-badge"
+                            class="hidden px-1.5 py-0.2 text-[9px] font-mono font-bold rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300">
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Panes Container -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <!-- Tab Pane 1: Telemetry Details -->
+                <div id="time-sidebar-pane-telemetry" class="space-y-3">
+                    <div
+                        class="p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3">
+                        <h4
+                            class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px] text-primary">analytics</span> Telemetry
+                            Details
+                        </h4>
+                        <div class="space-y-2 text-xs">
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5 flex-shrink-0">
+                                    <span class="material-symbols-outlined text-[14px] text-blue-500">hub</span> Context
+                                    ID
+                                </span>
+                                <span
+                                    class="font-bold text-[10.5px] font-mono text-gray-800 dark:text-gray-200 truncate max-w-[170px] cursor-default select-all"
+                                    id="time-sidebar-context" data-field="context" title="">-</span>
+                            </div>
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5 flex-shrink-0">
+                                    <span class="material-symbols-outlined text-[14px] text-amber-500">schedule</span>
+                                    Created At
+                                </span>
+                                <span
+                                    class="font-bold text-[10px] font-mono text-gray-800 dark:text-gray-200 truncate max-w-[170px] cursor-default select-all"
+                                    id="time-sidebar-created" data-field="created" title="">-</span>
+                            </div>
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-purple-500">timer</span>
+                                    Duration (nanos)
+                                </span>
+                                <span class="font-bold text-[10.5px] font-mono text-primary dark:text-purple-300"
+                                    id="time-sidebar-nanos" data-field="nanos">-</span>
+                            </div>
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-emerald-500">verified</span>
+                                    Definition
+                                </span>
+                                <span class="font-bold text-[10px] font-mono px-2 py-0.5 rounded-md"
+                                    id="time-sidebar-definition-status" data-field="definitionStatus">DEFINED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Pane 2: AOP Proxy Info -->
+                <div id="time-sidebar-pane-proxy" class="space-y-3 hidden">
+                    <div id="time-sidebar-proxy-card"
+                        class="p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4
+                                class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[13px] text-indigo-500">security</span> AOP
+                                Proxy Info
+                            </h4>
+                            <!-- Proxy Type Pill (Shown when proxied) -->
+                            <span id="time-sidebar-proxy-type"
+                                class="hidden px-2 py-0.5 text-[9.5px] font-mono font-bold rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50">
+                                CGLIB
+                            </span>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div id="time-sidebar-proxy-loading" class="hidden py-6 text-center space-y-2">
+                            <div class="inline-block animate-spin text-indigo-500">
+                                <span class="material-symbols-outlined text-[22px]">progress_activity</span>
+                            </div>
+                            <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-mono">Inspecting proxy
+                                metadata...</p>
+                        </div>
+
+                        <!-- Proxy Available Content -->
+                        <div id="time-sidebar-proxy-content" class="hidden space-y-2.5 text-xs">
+                            <!-- Target Class -->
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <div
+                                    class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 mb-1">
+                                    <span class="material-symbols-outlined text-[13px] text-blue-500">code</span> Target
+                                    Class
+                                </div>
+                                <div id="time-sidebar-proxy-target-class"
+                                    class="font-mono text-[10.5px] text-gray-800 dark:text-gray-200 truncate select-all break-all leading-tight font-medium"
+                                    title="">-</div>
+                            </div>
+
+                            <!-- Advice Frozen Status -->
+                            <div
+                                class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span
+                                    class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-purple-500">lock</span>
+                                    Advice Frozen
+                                </span>
+                                <span id="time-sidebar-proxy-frozen"
+                                    class="font-bold text-[9.5px] font-mono px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300">
+                                    FALSE
+                                </span>
+                            </div>
+
+                            <!-- Advices List -->
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <span
+                                        class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span
+                                            class="material-symbols-outlined text-[13px] text-amber-500">alt_route</span>
+                                        Advices &amp; Interceptors
+                                    </span>
+                                    <span id="time-sidebar-proxy-advices-count"
+                                        class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-300">0</span>
+                                </div>
+                                <div id="time-sidebar-proxy-advices-list"
+                                    class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Proxied Interfaces List -->
+                            <div
+                                class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60 space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <span
+                                        class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span
+                                            class="material-symbols-outlined text-[13px] text-emerald-500">integration_instructions</span>
+                                        Proxied Interfaces
+                                    </span>
+                                    <span id="time-sidebar-proxy-interfaces-count"
+                                        class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">0</span>
+                                </div>
+                                <div id="time-sidebar-proxy-interfaces-list"
+                                    class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Direct / Non-Proxied (404 Empty State) -->
+                        <div id="time-sidebar-proxy-empty"
+                            class="hidden py-6 px-3 rounded-xl bg-gradient-to-b from-gray-50/80 to-slate-50/40 dark:from-slate-950/50 dark:to-slate-900/30 border border-dashed border-gray-200 dark:border-slate-800 text-center">
+                            <div
+                                class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/50 mx-auto shadow-2xs mb-2.5">
+                                <span class="material-symbols-outlined text-[20px]">verified_user</span>
+                            </div>
+                            <div class="text-[12px] font-bold text-gray-800 dark:text-gray-200">Direct Bean Instance
+                            </div>
+                            <p
+                                class="text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px] mx-auto mt-1">
+                                Raw POJO instance without AOP proxy or CGLIB interceptor wrappers.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Footer Action -->
+            <div class="p-3.5 border-t border-gray-100 dark:border-slate-800 mt-auto bg-gray-50/70 dark:bg-slate-900/70 backdrop-blur-xs hidden"
+                id="time-sidebar-footer">
+                <a href="#/definitions"
+                    class="w-full py-2.5 px-3.5 bg-primary/10 hover:bg-primary/15 active:bg-primary/20 dark:bg-primary/20 dark:hover:bg-primary/25 text-primary dark:text-purple-300 border border-primary/20 hover:border-primary/35 dark:border-primary/30 rounded-xl text-xs font-bold flex items-center justify-between shadow-2xs hover:shadow-xs transition-all group cursor-pointer"
+                    id="time-btn-view-details">
+                    <span class="flex items-center gap-2">
+                        <span
+                            class="material-symbols-outlined text-[17px] text-primary dark:text-purple-300 group-hover:rotate-12 transition-transform">schema</span>
+                        <span>Open in Definitions</span>
+                    </span>
+                    <span
+                        class="material-symbols-outlined text-[16px] text-primary/70 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reusable UI Templates -->
+
+<!-- instance Ruler Tick Template -->
+<template id="tpl-instance-ruler-tick">
+    <div class="absolute top-0 bottom-0 pointer-events-none" data-field="tickContainer">
+        <div class="ruler-tick-mark" data-field="tickMark"></div>
+        <span class="absolute top-0 transform -translate-x-1/2 whitespace-nowrap text-xs" data-field="tickLabel"></span>
+    </div>
+</template>
+
+<!-- instance Grid Line Template -->
+<template id="tpl-instance-grid-line">
+    <div class="absolute inset-y-0 pointer-events-none border-l" data-field="gridLine"></div>
+</template>
+
+<!-- Proxy Item Template (Advices & Interfaces) -->
+<template id="tpl-proxy-item">
+    <div class="flex items-center justify-between py-1 px-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800/80 text-[10.5px] font-mono"
+        data-field="itemContainer">
+        <span class="text-gray-800 dark:text-gray-200 truncate font-medium" data-field="name" title=""></span>
+        <span class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0"
+            data-field="badge"></span>
+    </div>
+</template>
+
+<!-- Proxy Empty List Template -->
+<template id="tpl-proxy-empty-item">
+    <div class="text-[10px] text-gray-400 dark:text-gray-500 italic py-0.5" data-field="message"></div>
+</template>
+
+<!-- Gantt Waterfall Row Template -->
+<template id="tpl-waterfall-row">
+    <div class="waterfall-row flex items-center hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer group py-2 px-5 select-none relative z-[1]"
+        data-action="select-bean">
+        <!-- Left Info Column: Index + Category Icon + Bean Name + Latency Pill -->
+        <div class="flex items-center justify-between w-[340px] flex-shrink-0 pr-6">
+            <div class="flex items-center gap-2 min-w-0 pr-2">
+                <!-- Category Icon Badge -->
+                <div class="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 border shadow-2xs"
+                    data-field="iconContainer">
+                    <span class="material-symbols-outlined text-[14px]" data-field="icon">deployed_code</span>
+                </div>
+
+                <!-- Bean Name & Type Subtitle -->
+                <div class="min-w-0 flex-1">
+                    <span
+                        class="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-primary dark:group-hover:text-purple-300 font-mono transition-colors block leading-tight"
+                        data-field="name" title=""></span>
+                </div>
+            </div>
+
+            <!-- Duration Badge -->
+            <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md flex-shrink-0 border shadow-2xs"
+                data-field="duration"></span>
+        </div>
+
+        <!-- Right Gantt Bar Track -->
+        <div class="flex-1 relative h-6 flex items-center min-w-[500px] gantt-track">
+            <div class="gantt-bar absolute flex items-center justify-between px-2 overflow-hidden text-[10px] font-mono font-bold text-white shadow-xs"
+                data-field="bar">
+                <span class="truncate bar-inner-label" data-field="barLabel"></span>
+            </div>
+            <!-- Bottleneck flame badge if > 500µs -->
+            <div class="absolute hidden items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-bold shadow-xs z-10 pointer-events-none"
+                data-field="bottleneckBadge">
+                <span class="material-symbols-outlined text-[11px]">local_fire_department</span>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Table Row Template (Matching Instances Table) -->
+<template id="tpl-instance-row">
+    <tr class="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer instance-row group"
+        data-action="select-instance">
+        <!-- Bean Name -->
+        <td class="px-5 py-3.5">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-7 h-7 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-purple-300 group-hover:bg-primary/10 dark:group-hover:bg-purple-950/40 transition-colors flex-shrink-0"
+                    data-field="beanIconContainer">
+                    <span class="material-symbols-outlined text-[16px]" data-field="beanIcon">deployed_code</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="font-bold text-xs text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate font-mono"
+                        data-field="beanName">-</div>
+                    <div class="flex items-center gap-1.5 mt-0.5 min-w-0" data-field="createdAtContainer">
+                        <span
+                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 border border-gray-200/60 dark:border-slate-700/60 flex-shrink-0 tracking-tight">
+                            <span
+                                class="material-symbols-outlined text-[11px] text-gray-400 dark:text-gray-500">schedule</span>
+                            <span>Created</span>
+                        </span>
+                        <span class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate"
+                            data-field="createdAt" title="">-</span>
+                    </div>
+                </div>
+            </div>
+        </td>
+
+        <!-- Type -->
+        <td class="px-5 py-3.5 max-w-xs">
+            <div class="min-w-0 flex-1">
+                <div class="font-mono font-semibold text-xs text-gray-800 dark:text-gray-200 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors truncate"
+                    data-field="typeName" title="">-</div>
+                <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5"
+                    data-field="packageName" title="">-</div>
+            </div>
+        </td>
+
+        <!-- Scope -->
+        <td class="px-5 py-3.5 whitespace-nowrap">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wide border shadow-xs"
+                data-field="scopeBadge">-</span>
+        </td>
+
+        <!-- Init Duration -->
+        <td class="px-5 py-3.5 whitespace-nowrap">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border font-mono text-xs font-bold shadow-2xs transition-all"
+                data-field="durationBadge">
+                <span class="material-symbols-outlined text-[14px]" data-field="durationIcon">timer</span>
+                <span data-field="durationFormatted">-</span>
+                <span class="material-symbols-outlined text-[13px] hidden" data-field="bottleneckFlame" title="Bottleneck Bean">local_fire_department</span>
+            </div>
+        </td>
+
+        <!-- Context ID -->
+        <td class="px-5 py-3.5 whitespace-nowrap">
+            <span
+                class="font-mono text-xs text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 truncate max-w-[150px] block"
+                data-field="contextId" title="">-</span>
+        </td>
+
+        <!-- Action -->
+        <td class="px-5 py-3.5 text-right whitespace-nowrap">
+            <button
+                class="w-7 h-7 rounded-lg inline-flex items-center justify-center text-gray-400 hover:text-primary dark:hover:text-purple-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="View instance details" data-action="select-instance">
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-instance-loading">
+    <tr>
+        <td colspan="6" class="py-16 text-center text-gray-400">
+            <div class="flex flex-col items-center justify-center gap-2.5">
+                <span class="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent"></span>
+                <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Loading bean instances...</span>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-instance-empty">
+    <tr>
+        <td colspan="6" class="py-16 text-center text-gray-400">
+            <div class="flex flex-col items-center justify-center gap-1.5">
+                <span
+                    class="material-symbols-outlined text-3xl text-gray-300 dark:text-slate-600 mb-1">hourglass_empty</span>
+                <span class="text-xs font-semibold" data-field="emptyMessage">No bean instances found matching filter
+                    criteria</span>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500">Try adjusting your search query or
+                    filters</span>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-instance-error">
+    <tr>
+        <td colspan="6" class="py-16 text-center text-rose-500">
+            <div class="flex flex-col items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-3xl">error</span>
+                <span class="text-xs font-semibold" data-field="errorMessage">Failed to load bean instances</span>
+                <button data-action="refresh-data"
+                    class="mt-1 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg text-xs font-semibold hover:bg-rose-100 transition-colors cursor-pointer">
+                    Retry
+                </button>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-waterfall-empty">
+    <div class="py-16 text-center text-gray-400 dark:text-gray-500">
+        <div class="flex flex-col items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-3xl text-gray-300 dark:text-slate-600">hourglass_empty</span>
+            <span class="text-xs font-semibold" data-field="message">No bean instances found matching search
+                criteria</span>
+        </div>
+    </div>
+</template>
+
+<template id="tpl-waterfall-loading">
+    <div class="py-16 text-center text-gray-400">
+        <div class="flex flex-col items-center justify-center gap-2.5">
+            <span class="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent"></span>
+            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Loading bean instances...</span>
+        </div>
+    </div>
+</template>
+
+<template id="tpl-waterfall-error">
+    <div class="py-12 text-center text-rose-500 dark:text-rose-400">
+        <div class="flex items-center justify-center gap-2 text-sm font-bold">
+            <span class="material-symbols-outlined text-xl">warning</span>
+            <span data-field="errorMessage">Failed to load bean instance data</span>
+        </div>
+    </div>
+</template>

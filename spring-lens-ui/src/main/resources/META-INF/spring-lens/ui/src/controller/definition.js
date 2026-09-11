@@ -1,26 +1,22 @@
-import httpClient from '../../client/http-client.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
-import beanDataStore from '../../storage/bean-data-store.js';
+import httpClient from '../helper/http-client.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
+import beanDataStore from '../helper/bean-data-store.js';
 import {
-    tree, tbLink, lrLink, capitalize, formatPercentage, resolveBeanMetadata, resolveScopeStyle, NH, RX, NW,
+    tree, tbLink, lrLink, capitalize, formatPercentage, resolveBeanMetadata, resolveScopeStyle, resolveScopeBadgeClass, NH, RX, NW,
     ICON, GAP_X, GAP_Y, CSS_CLASSES, ROLE_COLORS, SCOPE_COLORS, ZOOM_SCALE_EXTENT, GRAPH_NODE_THEMES, GRAPH_NODE_THEMES_TINT,
     GRAPH_NODE_THEMES_BADGE, LOADING_MODE_COLORS, CONTEXT_THEME_COLORS, downloadJson, TemplateEngine, QueryParam, Pagination, Sidebar,
-    BeanSearchEngine, debounce
-} from '../../utils/index.js';
+    ToastNotification, BeanSearchEngine, debounce
+} from '../helper/index.js';
 
-export default class BeanDefinitionsController {
+export default class Definitions {
     // Private State Fields
     _hasFetchedTableData = false;
     _debouncedFetchTableData = null;
 
-    constructor(
-        beanDefinitionsEndpoint,
-        beanDefinitionSummaryEndpoint,
-        beanDefinitionSearchEndpoint
-    ) {
-        this.beanDefinitionEndpoint = beanDefinitionsEndpoint;
-        this.beanDefinitionSummaryEndpoint = beanDefinitionSummaryEndpoint;
-        this.beanDefinitionSearchEndpoint = beanDefinitionSearchEndpoint;
+    constructor(endpoints = {}) {
+        this.beanDefinitionEndpoint = endpoints.BEAN_DEFINITION;
+        this.beanDefinitionSummaryEndpoint = endpoints.SUMMARY_BEAN_DEFINITION;
+        this.beanDefinitionSearchEndpoint = endpoints.FIND_BEAN_DEFINITION;
 
         this.activeCharts = {
             scopeChart: null,
@@ -40,7 +36,7 @@ export default class BeanDefinitionsController {
             totalElements: 0,
             totalPages: 1,
             pageNumber: 0,
-            pageSize: 10,
+            pageSize: 20,
             isFirstPage: true,
             isLastPage: true
         };
@@ -55,7 +51,7 @@ export default class BeanDefinitionsController {
         };
 
         this.currentPage = 1;
-        this.itemsPerPage = 10;
+        this.itemsPerPage = 20;
         this.sortColumn = '';
         this.sortDirection = 'asc';
 
@@ -64,11 +60,12 @@ export default class BeanDefinitionsController {
         this.selectedContextId = null;
         this.activeSidebarTab = 'properties';
 
-        this.modalGraphMode = 'tb';
+        this.modalGraphMode = 'lr';
         this.modalNodeTheme = localStorage.getItem('sl-node-theme') || 'tint';
         this.modalZoom = null;
         this.modalSvg = null;
-        this.modalGraphRoot = null;
+        this.modalGraphData = null;
+        this.modalGraphNodes = [];
     }
 
     async enter(params) {
@@ -80,7 +77,7 @@ export default class BeanDefinitionsController {
             this.closeSidebar(true);
 
             const queryParams = QueryParam.parse(params);
-            const targetBean = QueryParam.get(queryParams, 'search', 'bean');
+            const targetBean = QueryParam.get(queryParams, 'search', 'beanName');
             const targetContextId = QueryParam.get(queryParams, 'contextId', 'context');
             const scope = queryParams.get('scope');
             const role = queryParams.get('role');
@@ -255,6 +252,9 @@ export default class BeanDefinitionsController {
         const canvasElement = document.getElementById(canvasId);
         if (!canvasElement) return null;
 
+        const isDark = document.documentElement.classList.contains('dark');
+        const total = data.reduce((sum, val) => sum + val, 0);
+
         return new Chart(canvasElement, {
             type: 'doughnut',
             data: {
@@ -263,16 +263,44 @@ export default class BeanDefinitionsController {
                     data,
                     backgroundColor,
                     borderWidth: 0,
-                    hoverOffset: 4
+                    borderRadius: 4,  // Sleek rounded arc ends
+                    spacing: 2,       // Crisp gap separation between arcs
+                    hoverOffset: 3
                 }]
             },
             options: {
-                cutout: '70%',
+                cutout: '72%',
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 700,
+                    easing: 'easeOutQuart'
+                },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: true }
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                        titleColor: isDark ? '#f8fafc' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#334155',
+                        borderColor: isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(226, 232, 240, 0.9)',
+                        borderWidth: 1,
+                        padding: 8,
+                        boxPadding: 4,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        titleFont: { family: 'Inter, sans-serif', size: 11, weight: 'bold' },
+                        bodyFont: { family: 'Inter, sans-serif', size: 11 },
+                        callbacks: {
+                            label: function (context) {
+                                const val = context.raw || 0;
+                                const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                return ` ${context.label}: ${val} (${pct}%)`;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -374,8 +402,8 @@ export default class BeanDefinitionsController {
             role: this.filterCriteria.role,
             primary: this.filterCriteria.primary,
             lazyInit: this.filterCriteria.lazyInit,
-            sortBy: this.sortColumn,
-            sortDir: this.sortDirection
+            sortBy: this.sortColumn || undefined,
+            sortDir: this.sortColumn ? (this.sortDirection || 'asc').toUpperCase() : undefined
         });
     }
 
@@ -487,21 +515,59 @@ export default class BeanDefinitionsController {
         const { icon, color } = resolveBeanMetadata(beanInformation);
         $row.find('[data-field="icon"]').css('color', color).text(icon);
         $row.find('[data-field="name"]').text(beanName).attr('title', beanName);
-        $row.find('[data-field="type"]').text(type || 'N/A').attr('title', type || '');
-        $row.find('[data-field="role"]').text(role ? capitalize(role.replace(/^ROLE_/, '')) : 'N/A');
-        $row.find('[data-field="context"]').text(contextId || 'N/A');
+
+        // Dependencies & Dependents Counts
+        const deps = Array.isArray(beanInformation.dependencies) ? beanInformation.dependencies : [];
+        const dependents = Array.isArray(beanInformation.dependents) ? beanInformation.dependents : [];
+        const depCountStr = `${deps.length} ${deps.length === 1 ? 'dep' : 'deps'}`;
+        const usedByStr = `${dependents.length} used by`;
+        $row.find('[data-field="depCount"]').text(depCountStr).parent().attr('title', `${deps.length} dependencies (Depends on)`);
+        $row.find('[data-field="usedByCount"]').text(usedByStr).parent().attr('title', `${dependents.length} dependents (Used by)`);
+
+        // Package Name Subtitle
+        const pkg = type && type.includes('.') ? type.substring(0, type.lastIndexOf('.')) : '';
+        $row.find('[data-field="packageName"]').text(pkg || 'default package').attr('title', pkg || '');
+
+        // Type
+        const shortType = type && type.includes('.') ? type.substring(type.lastIndexOf('.') + 1) : (type || '-');
+        $row.find('[data-field="type"]').text(shortType).attr('title', type || '');
+
+        // Role Badge Styling
+        const rawRole = (role ? role.replace(/^ROLE_/, '') : 'APPLICATION').toUpperCase();
+        const $roleEl = $row.find('[data-field="role"]').text(rawRole);
+        if (rawRole === 'INFRASTRUCTURE') {
+            $roleEl.addClass('bg-gradient-to-r from-rose-500/20 via-pink-500/15 to-red-500/15 text-rose-900 dark:text-rose-200 border-rose-300/80 dark:border-rose-500/40');
+        } else if (rawRole === 'SUPPORT') {
+            $roleEl.addClass('bg-gradient-to-r from-teal-500/20 via-emerald-500/15 to-cyan-500/15 text-teal-900 dark:text-teal-200 border-teal-300/80 dark:border-teal-500/40');
+        } else {
+            $roleEl.addClass('bg-gradient-to-r from-blue-500/20 via-indigo-500/15 to-sky-500/15 text-blue-900 dark:text-blue-200 border-blue-300/80 dark:border-blue-500/40');
+        }
+
+        // Context
+        $row.find('[data-field="context"]').text(contextId || '-').attr('title', contextId || '');
 
         // Scope Styling
+        const rawScope = (scope ? scope : 'SINGLETON').toUpperCase();
         $row.find('[data-field="scope"]')
-            .text(scope ? capitalize(scope) : 'N/A')
-            .css(resolveScopeStyle(scope));
+            .text(rawScope)
+            .addClass(resolveScopeBadgeClass(scope));
 
-        // Boolean Indicators
-        const primaryIcon = TemplateEngine.renderBooleanIcon(primary);
-        if (primaryIcon) $row.find('[data-field="primary"]').empty().append(primaryIcon);
+        // 1. Inline Traits Micro-Badges (Beside Bean Name)
+        const $inlineTraits = $row.find('[data-field="inlineTraits"]').empty();
+        if (primary) {
+            $inlineTraits.append(TemplateEngine.clone('tpl-trait-micro-primary'));
+        }
+        if (lazyInit) {
+            $inlineTraits.append(TemplateEngine.clone('tpl-trait-micro-lazy'));
+        }
 
-        const lazyIcon = TemplateEngine.renderBooleanIcon(lazyInit);
-        if (lazyIcon) $row.find('[data-field="lazy"]').empty().append(lazyIcon);
+        // 2. Traits Column Badges
+        const $traitsContainer = $row.find('[data-field="traitsContainer"]').empty();
+        if (lazyInit) {
+            $traitsContainer.append(TemplateEngine.clone('tpl-trait-badge-lazy'));
+        } else {
+            $traitsContainer.append(TemplateEngine.clone('tpl-trait-badge-eager'));
+        }
 
         return clone;
     }
@@ -536,8 +602,16 @@ export default class BeanDefinitionsController {
     bindEvents() {
         this._bindSearchInput();
         this._bindFilterChangeEvents();
+        this._bindTableSorting();
         this._bindClickActionDelegation();
         this.bindModalControls();
+    }
+
+    _bindTableSorting() {
+        this._on(document, 'click', '.th-sortable, th[data-sort]', (e) => {
+            e.preventDefault();
+            this._handleSortColumn($(e.currentTarget));
+        });
     }
 
     _on(target, event, delegateOrHandler, maybeHandler) {
@@ -597,7 +671,7 @@ export default class BeanDefinitionsController {
         });
 
         this._on('#bean-definition-filter-size', 'change', (e) => {
-            this.itemsPerPage = parseInt(e.target.value, 10) || 10;
+            this.itemsPerPage = parseInt(e.target.value, 10) || 20;
             this.currentPage = 1;
             this.fetchTableData();
         });
@@ -649,11 +723,13 @@ export default class BeanDefinitionsController {
 
     _handleResetFilters() {
         this._resetFilterState();
+        this.sortColumn = '';
+        this.sortDirection = 'asc';
         this.fetchTableData();
     }
 
     _handleSortColumn($target) {
-        const columnKey = $target.data('sort');
+        const columnKey = $target.data('sort') || $target.attr('data-sort');
         if (!columnKey) return;
 
         this.sortDirection = (this.sortColumn === columnKey && this.sortDirection === 'asc') ? 'desc' : 'asc';
@@ -665,12 +741,33 @@ export default class BeanDefinitionsController {
     async _handleSelectBean($target) {
         const beanName = $target.data('bean-name');
         const contextId = $target.data('context-id');
-        if (beanName) await this.selectBean(beanName, contextId);
+        if (beanName) {
+            const success = await this.selectBean(beanName, contextId);
+            if (!success) {
+                ToastNotification.show({
+                    title: 'Bean Not Found',
+                    message: `Bean definition for <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${beanName}</strong> could not be loaded or is not registered in the application context.`,
+                    type: 'warning',
+                    duration: 4000
+                });
+            }
+        }
     }
 
     async _handleSelectDependency($target) {
-        const dependencyName = $target.data('fullname');
-        if (dependencyName) await this.selectBean(dependencyName);
+        const dependencyName = $target.data('fullname') || $target.find('[data-field="name"]').text().trim();
+        const contextId = $target.data('context-id') || this.selectedContextId;
+        if (!dependencyName) return;
+
+        const success = await this.selectBean(dependencyName, contextId);
+        if (!success) {
+            ToastNotification.show({
+                title: 'Dependency Not Found',
+                message: `The bean <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${dependencyName}</strong> is referenced as a dependency, but its definition is not registered or not found in the application context.`,
+                type: 'warning',
+                duration: 4500
+            });
+        }
     }
 
     _handleChangePage($target) {
@@ -802,7 +899,7 @@ export default class BeanDefinitionsController {
             isLazy: '',
             beanName: ''
         };
-        this.itemsPerPage = 10;
+        this.itemsPerPage = 20;
         this.currentPage = 1;
         this.sortColumn = '';
         this.sortDirection = 'asc';
@@ -813,7 +910,7 @@ export default class BeanDefinitionsController {
         $('#bean-definition-filter-role').val('');
         $('#bean-definition-filter-primary').val('');
         $('#bean-definition-filter-lazy').val('');
-        $('#bean-definition-filter-size').val('10');
+        $('#bean-definition-filter-size').val('20');
     }
 
     /**
@@ -853,8 +950,9 @@ export default class BeanDefinitionsController {
         $beanNameModalGraphContainer.text(targetBean.beanName).attr('title', targetBean.beanName);
         $beanGraphModalContainer.removeClass('hidden');
 
-        // Sync node theme button state
+        // Sync node theme and layout mode button state
         this.setModalNodeTheme(this.modalNodeTheme, false);
+        this.updateGraphModeButtons(this.modalGraphMode);
 
         requestAnimationFrame(() => {
             $beanGraphModalContainer.removeClass('opacity-0 pointer-events-none').addClass('opacity-100');
@@ -932,8 +1030,29 @@ export default class BeanDefinitionsController {
 
         svg.selectAll('*').remove();
 
-        svg.append('defs')
-            .append('marker')
+        const isDark = document.documentElement.classList.contains('dark');
+        const defs = svg.append('defs');
+
+        const createArrowMarker = (id, color) => {
+            defs.append('marker')
+                .attr('id', id)
+                .attr('viewBox', '0 0 10 10')
+                .attr('refX', 8)
+                .attr('refY', 5)
+                .attr('markerUnits', 'userSpaceOnUse')
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M 0 1.5 L 8 5 L 0 8.5 z')
+                .attr('fill', color);
+        };
+
+        createArrowMarker('modal-arrow-dependency', isDark ? '#34d399' : '#059669');
+        createArrowMarker('modal-arrow-dependent', isDark ? '#c084fc' : '#9333ea');
+        createArrowMarker('modal-arrow-default', isDark ? '#64748b' : '#94a3b8');
+
+        defs.append('marker')
             .attr('id', 'modal-dot')
             .attr('viewBox', '0 0 10 10')
             .attr('refX', 9)
@@ -946,9 +1065,10 @@ export default class BeanDefinitionsController {
             .attr('cx', 5)
             .attr('cy', 5)
             .attr('r', 4)
-            .attr('fill', '#94a3b8');
+            .attr('fill', isDark ? '#64748b' : '#94a3b8');
 
         const gMain = svg.append('g').attr('id', 'modal-g-main');
+        const gHeader = gMain.append('g').attr('class', 'tier-headers');
         const gLink = gMain.append('g').attr('class', 'links');
         const gNode = gMain.append('g').attr('class', 'nodes');
 
@@ -961,33 +1081,195 @@ export default class BeanDefinitionsController {
         this.modalSvg = svg;
 
         const rawData = this._buildModalGraphHierarchy(targetBean);
-        const root = d3.hierarchy(rawData);
+        this.modalGraphData = rawData;
+        this.modalGraphMode = this.modalGraphMode || 'lr';
 
-        this.modalGraphRoot = root;
-        this.modalGraphMode = this.modalGraphMode || 'tb';
-
-        this._drawModalTree(root, gNode, gLink, svg, zoom);
+        this._drawModalTree(rawData, gNode, gLink, svg, zoom, gHeader);
     }
 
-    _drawModalTree(root, gNode, gLink, svg, zoom) {
+    _drawModalTree(graphData, gNode, gLink, svg, zoom, gHeader = null) {
+        if (!gNode || !gLink || !graphData || !graphData.target) return;
+        gNode.selectAll('*').remove();
+        gLink.selectAll('*').remove();
+
+        const actualHeader = gHeader || svg.select('g.tier-headers');
+        if (actualHeader && actualHeader.node()) {
+            actualHeader.selectAll('*').remove();
+        }
+
+        const { target, dependencies = [], dependents = [] } = graphData;
         const isTB = this.modalGraphMode === 'tb';
-        const descendants = root.descendants();
-
-        descendants.forEach((node, i) => {
-            node.id = i;
-            const nameLen = node.data.name?.length || 0;
-            node.width = Math.max(180, nameLen * 7.8 + 64);
-        });
-
-        const maxWidth = d3.max(descendants, d => d.width) || NW;
-        tree.nodeSize(isTB ? [maxWidth + GAP_X, NH + GAP_Y] : [NH + 36, maxWidth + GAP_Y]);
-        tree(root);
-
         const isDark = document.documentElement.classList.contains('dark');
         const isBadge = (this.modalNodeTheme === 'badge');
 
+        const calcWidth = (node) => {
+            const nameLen = node?.name?.length || 0;
+            return Math.max(180, nameLen * 7.8 + 64);
+        };
+
+        target.width = calcWidth(target);
+        target.id = 'target-node';
+
+        dependencies.forEach((node, i) => {
+            node.id = `dep-${i}`;
+            node.width = calcWidth(node);
+        });
+
+        dependents.forEach((node, i) => {
+            node.id = `dependent-${i}`;
+            node.width = calcWidth(node);
+        });
+
+        const depNodes = dependencies;
+        const dependentNodes = dependents;
+
+        let headers = [];
+
+        if (isTB) {
+            // Top-to-Bottom: Dependencies (Top) -> Target (Center) -> Dependents (Bottom)
+            target.x = 0;
+            target.y = 0;
+
+            const nodeGap = 28;
+            const vGap = 80;
+            const depRowY = -(NH / 2) - vGap - (NH / 2);
+            const dependentRowY = (NH / 2) + vGap + (NH / 2);
+
+            if (depNodes.length > 0) {
+                const depTotalW = depNodes.reduce((sum, d) => sum + d.width, 0) + (depNodes.length - 1) * nodeGap;
+                let curDepX = -depTotalW / 2;
+                depNodes.forEach((node) => {
+                    node.x = curDepX + node.width / 2;
+                    node.y = depRowY;
+                    curDepX += node.width + nodeGap;
+                });
+                headers.push({ text: `DEPENDENCIES (${dependencies.length})`, x: 0, y: depRowY - NH / 2 - 22, color: isDark ? '#34d399' : '#059669' });
+            }
+
+            headers.push({ text: 'TARGET BEAN', x: 0, y: target.y - NH / 2 - 22, color: isDark ? '#60a5fa' : '#2563eb' });
+
+            if (dependentNodes.length > 0) {
+                const dependentTotalW = dependentNodes.reduce((sum, d) => sum + d.width, 0) + (dependentNodes.length - 1) * nodeGap;
+                let curDependentX = -dependentTotalW / 2;
+                dependentNodes.forEach((node) => {
+                    node.x = curDependentX + node.width / 2;
+                    node.y = dependentRowY;
+                    curDependentX += node.width + nodeGap;
+                });
+                headers.push({ text: `DEPENDENTS (${dependents.length})`, x: 0, y: dependentRowY - NH / 2 - 22, color: isDark ? '#c084fc' : '#9333ea' });
+            }
+        } else {
+            // Left-to-Right: Dependencies (Left) -> Target (Center) -> Dependents (Right)
+            target.x = 0;
+            target.y = 0;
+
+            const hGap = 110;
+            const rowHeight = NH + 22;
+
+            if (depNodes.length > 0) {
+                const maxDepWidth = d3.max(depNodes, d => d.width) || 180;
+                const depColCenterX = -(target.width / 2) - hGap - (maxDepWidth / 2);
+                const depTotalH = (depNodes.length - 1) * rowHeight;
+                depNodes.forEach((node, i) => {
+                    node.x = depColCenterX;
+                    node.y = -depTotalH / 2 + i * rowHeight;
+                });
+                const minDepY = d3.min(depNodes, d => d.y) ?? 0;
+                headers.push({ text: `DEPENDENCIES (${dependencies.length})`, x: depColCenterX, y: minDepY - NH / 2 - 22, color: isDark ? '#34d399' : '#059669' });
+            }
+
+            headers.push({ text: 'TARGET BEAN', x: 0, y: target.y - NH / 2 - 22, color: isDark ? '#60a5fa' : '#2563eb' });
+
+            if (dependentNodes.length > 0) {
+                const maxDependentWidth = d3.max(dependentNodes, d => d.width) || 180;
+                const dependentColCenterX = (target.width / 2) + hGap + (maxDependentWidth / 2);
+                const dependentTotalH = (dependentNodes.length - 1) * rowHeight;
+                dependentNodes.forEach((node, i) => {
+                    node.x = dependentColCenterX;
+                    node.y = -dependentTotalH / 2 + i * rowHeight;
+                });
+                const minDependentY = d3.min(dependentNodes, d => d.y) ?? 0;
+                headers.push({ text: `DEPENDENTS (${dependents.length})`, x: dependentColCenterX, y: minDependentY - NH / 2 - 22, color: isDark ? '#c084fc' : '#9333ea' });
+            }
+        }
+
+        if (actualHeader && actualHeader.node()) {
+            actualHeader.selectAll('text.tier-header')
+                .data(headers)
+                .join('text')
+                .attr('class', 'tier-header')
+                .attr('x', d => d.x)
+                .attr('y', d => d.y)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', 11)
+                .attr('font-weight', 700)
+                .attr('letter-spacing', '0.06em')
+                .attr('font-family', 'Inter, -apple-system, sans-serif')
+                .attr('fill', d => d.color)
+                .text(d => d.text);
+        }
+
+        // Links
+        const links = [];
+        if (dependencies.length > 0) {
+            dependencies.forEach(dep => {
+                links.push({
+                    id: `${dep.id}->${target.id}`,
+                    source: dep,
+                    target: target,
+                    kind: 'dependency'
+                });
+            });
+        }
+        if (dependents.length > 0) {
+            dependents.forEach(dependent => {
+                links.push({
+                    id: `${target.id}->${dependent.id}`,
+                    source: target,
+                    target: dependent,
+                    kind: 'dependent'
+                });
+            });
+        }
+
+        const linkFn = (d) => {
+            if (isTB) {
+                const sx = d.source.x;
+                const sy = d.source.y + NH / 2;
+                const tx = d.target.x;
+                const ty = d.target.y - NH / 2;
+                const my = (sy + ty) / 2;
+                return `M${sx},${sy} C${sx},${my} ${tx},${my} ${tx},${ty}`;
+            } else {
+                const sx = d.source.x + d.source.width / 2;
+                const sy = d.source.y;
+                const tx = d.target.x - d.target.width / 2;
+                const ty = d.target.y;
+                const mx = (sx + tx) / 2;
+                return `M${sx},${sy} C${mx},${sy} ${mx},${ty} ${tx},${ty}`;
+            }
+        };
+
+        gLink.selectAll('path.link')
+            .data(links, d => d.id)
+            .join('path')
+            .attr('class', 'link')
+            .attr('fill', 'none')
+            .attr('stroke', d => {
+                if (d.kind === 'dependency') return isDark ? '#059669' : '#10b981';
+                if (d.kind === 'dependent') return isDark ? '#9333ea' : '#a855f7';
+                return isDark ? '#475569' : '#94a3b8';
+            })
+            .attr('stroke-width', 1.8)
+            .attr('stroke-opacity', 0.85)
+            .attr('marker-end', d => `url(#modal-arrow-${d.kind})`)
+            .attr('d', linkFn);
+
+        const allNodes = [target, ...dependencies, ...dependents];
+        this.modalGraphNodes = allNodes;
+
         const getModalNodeStyle = (node) => {
-            const kind = node?.data?.meta?.kind || 'default';
+            const kind = node?.meta?.kind || 'default';
             const mode = isDark ? 'dark' : 'light';
             const themeMap = (isBadge ? GRAPH_NODE_THEMES_BADGE : GRAPH_NODE_THEMES_TINT) || GRAPH_NODE_THEMES;
 
@@ -995,25 +1277,11 @@ export default class BeanDefinitionsController {
             return modeMap[kind] || modeMap.default || { fill: '#eff6ff', stroke: '#3b82f6', icon: '#2563eb', text: '#1d4ed8' };
         };
 
-        const linkFn = isTB ? tbLink : lrLink;
-        gLink.selectAll('path.link')
-            .data(root.links(), d => d.target.id)
-            .join('path')
-            .attr('class', 'link')
-            .attr('fill', 'none')
-            .attr('stroke', isDark ? '#334155' : '#cbd5e1')
-            .attr('stroke-width', 1.6)
-            .attr('marker-end', 'url(#modal-dot)')
-            .attr('d', linkFn);
-
-        const getNodePos = ({ x, y }) => isTB ? `translate(${x},${y})` : `translate(${y},${x})`;
-
         const nodes = gNode.selectAll('g.node')
-            .data(descendants, d => d.id)
+            .data(allNodes, d => d.id)
             .join('g')
-            .attr('class', 'node')
-            .attr('cursor', 'pointer')
-            .attr('transform', getNodePos);
+            .attr('class', 'node cursor-pointer')
+            .attr('transform', d => `translate(${d.x},${d.y})`);
 
         nodes.append('rect')
             .attr('class', 'node-rect')
@@ -1024,7 +1292,7 @@ export default class BeanDefinitionsController {
             .attr('rx', RX)
             .attr('fill', d => getModalNodeStyle(d).fill)
             .attr('stroke', d => getModalNodeStyle(d).stroke)
-            .attr('stroke-width', d => d.data.meta?.kind === 'target' ? 2.5 : 2);
+            .attr('stroke-width', d => d.meta?.kind === 'target' ? 2.5 : 1.8);
 
         nodes.append('rect')
             .attr('class', 'node-icon-bg')
@@ -1058,7 +1326,7 @@ export default class BeanDefinitionsController {
             .attr('font-weight', 600)
             .attr('font-family', 'Inter, -apple-system, sans-serif')
             .attr('fill', d => getModalNodeStyle(d).text)
-            .text(d => d.data.name);
+            .text(d => d.name);
 
         const $tip = $('#tip');
         if (!$tip.length) {
@@ -1069,15 +1337,22 @@ export default class BeanDefinitionsController {
         nodes
             .on('click', async (event, node) => {
                 event.stopPropagation();
-                if (node.data.fullName && node.data.fullName !== this.selectedBeanName) {
-                    const success = await this.selectBean(node.data.fullName);
+                if (node.fullName && node.fullName !== this.selectedBeanName) {
+                    const success = await this.selectBean(node.fullName);
                     if (success) {
                         await this.openGraphModal();
+                    } else {
+                        ToastNotification.show({
+                            title: 'Bean Definition Not Found',
+                            message: `Bean definition for <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${node.fullName}</strong> is unavailable or not registered.`,
+                            type: 'warning',
+                            duration: 4000
+                        });
                     }
                 }
             })
             .on('mouseenter', (event, node) => {
-                const { name, fullName, meta = {} } = node.data;
+                const { name, fullName, meta = {} } = node;
                 const { type, scope, role, kind } = meta;
 
                 const shortType = (type && type !== 'N/A')
@@ -1103,7 +1378,7 @@ export default class BeanDefinitionsController {
     }
 
     fitModalView() {
-        if (!this.modalSvg || !this.modalZoom || !this.modalGraphRoot) return;
+        if (!this.modalSvg || !this.modalZoom || !this.modalGraphNodes) return;
         const svgNode = this.modalSvg.node();
         if (!svgNode || !svgNode.isConnected) return;
 
@@ -1111,19 +1386,18 @@ export default class BeanDefinitionsController {
         const width = container.width() || 800;
         const height = container.height() || 500;
 
-        const nodes = this.modalGraphRoot.descendants();
+        const nodes = this.modalGraphNodes;
         if (!nodes || nodes.length === 0) return;
-        const isTB = this.modalGraphMode === 'tb';
 
-        const minX = d3.min(nodes, d => isTB ? d.x - (d.width || 180) / 2 : d.y - (d.width || 180) / 2) ?? 0;
-        const maxX = d3.max(nodes, d => isTB ? d.x + (d.width || 180) / 2 : d.y + (d.width || 180) / 2) ?? 800;
-        const minY = d3.min(nodes, d => isTB ? d.y - NH / 2 : d.x - NH / 2) ?? 0;
-        const maxY = d3.max(nodes, d => isTB ? d.y + NH / 2 : d.x + NH / 2) ?? 500;
+        const minX = d3.min(nodes, d => d.x - (d.width || 180) / 2) ?? -200;
+        const maxX = d3.max(nodes, d => d.x + (d.width || 180) / 2) ?? 200;
+        const minY = d3.min(nodes, d => d.y - NH / 2 - 32) ?? -100;
+        const maxY = d3.max(nodes, d => d.y + NH / 2 + 10) ?? 100;
 
-        const graphWidth = maxX - minX || 1;
-        const graphHeight = maxY - minY || 1;
+        const graphWidth = (maxX - minX) || 1;
+        const graphHeight = (maxY - minY) || 1;
 
-        let scale = Math.min(0.9, Math.min(width / graphWidth, height / graphHeight));
+        let scale = Math.min(0.9, Math.min((width - 60) / graphWidth, (height - 60) / graphHeight));
         if (isNaN(scale) || !isFinite(scale) || scale <= 0) scale = 1;
 
         const translateX = width / 2 - ((minX + maxX) / 2) * scale;
@@ -1151,10 +1425,7 @@ export default class BeanDefinitionsController {
         });
     }
 
-    setGraphMode(mode) {
-        if (this.modalGraphMode === mode) return;
-        this.modalGraphMode = mode;
-
+    updateGraphModeButtons(mode) {
         const isTb = mode === 'tb';
         const activeClasses = 'bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs font-bold';
         const inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white font-medium';
@@ -1166,14 +1437,21 @@ export default class BeanDefinitionsController {
         $('#modal-btn-lr')
             .toggleClass(activeClasses, !isTb)
             .toggleClass(inactiveClasses, isTb);
+    }
 
-        if (this.modalGraphRoot && this.modalSvg) {
+    setGraphMode(mode) {
+        if (this.modalGraphMode === mode) return;
+        this.modalGraphMode = mode;
+        this.updateGraphModeButtons(mode);
+
+        if (this.modalGraphData && this.modalSvg) {
             this._drawModalTree(
-                this.modalGraphRoot,
+                this.modalGraphData,
                 this.modalSvg.select('g.nodes'),
                 this.modalSvg.select('g.links'),
                 this.modalSvg,
-                this.modalZoom
+                this.modalZoom,
+                this.modalSvg.select('g.tier-headers')
             );
         }
     }
@@ -1194,13 +1472,14 @@ export default class BeanDefinitionsController {
             .toggleClass(activeClasses, !isTint)
             .toggleClass(inactiveClasses, isTint);
 
-        if (shouldUpdate && this.modalGraphRoot && this.modalSvg) {
+        if (shouldUpdate && this.modalGraphData && this.modalSvg) {
             this._drawModalTree(
-                this.modalGraphRoot,
+                this.modalGraphData,
                 this.modalSvg.select('g.nodes'),
                 this.modalSvg.select('g.links'),
                 this.modalSvg,
-                this.modalZoom
+                this.modalZoom,
+                this.modalSvg.select('g.tier-headers')
             );
         }
     }
@@ -1216,7 +1495,7 @@ export default class BeanDefinitionsController {
         if (!$sidebar.length) return;
         this._initSidebar();
         $sidebar.removeClass('w-0 max-w-0 opacity-0 pointer-events-none -mr-6 border-0')
-            .addClass('w-[360px] max-w-[360px] opacity-100 mr-0 border');
+            .addClass('w-[380px] max-w-[380px] opacity-100 mr-0 border');
     }
 
     closeSidebar(immediate = false) {
@@ -1228,7 +1507,7 @@ export default class BeanDefinitionsController {
 
         if (!$sidebar.length) return;
 
-        $sidebar.removeClass('w-[360px] max-w-[360px] opacity-100 mr-0 border')
+        $sidebar.removeClass('w-[380px] max-w-[380px] opacity-100 mr-0 border')
             .addClass('w-0 max-w-0 opacity-0 pointer-events-none -mr-6 border-0');
     }
 

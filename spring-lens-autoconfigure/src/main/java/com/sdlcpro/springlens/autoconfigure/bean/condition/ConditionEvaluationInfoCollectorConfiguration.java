@@ -43,7 +43,8 @@ class ConditionEvaluationInfoCollectorConfiguration {
 
         var settings = new ConditionReportSettings(
                 include.isToolInternal(),
-                exclude.getPackagePatterns()
+                exclude.getPackagePatterns(),
+                exclude.isFrameworkInternal()
         );
 
         var conditionEvaluationInfoGatherer = new ConditionEvaluationInfoGathererImpl();

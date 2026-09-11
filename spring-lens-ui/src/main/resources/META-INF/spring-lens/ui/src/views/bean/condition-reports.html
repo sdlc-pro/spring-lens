@@ -1,0 +1,492 @@
+<div class="p-4 sm:p-6 lg:p-8 flex-1 flex flex-col gap-5 sm:gap-6 overflow-y-auto custom-scrollbar h-full min-h-0">
+    <!-- 4 KPI Metric Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
+        <!-- Card 1: Total Configurations -->
+        <div
+            class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-primary/30 flex items-center justify-between transition-all duration-300 group">
+            <div>
+                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">Total Configurations</span>
+                <div class="text-2xl font-black text-gray-900 dark:text-white mt-1 mb-0.5 tracking-tight"
+                    id="condition-kpi-total">-</div>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-medium">All evaluated classes</span>
+            </div>
+            <div
+                class="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-primary dark:text-purple-300 flex items-center justify-center border border-primary/20 shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform">
+                <span class="material-symbols-outlined text-[22px]">layers</span>
+            </div>
+        </div>
+
+        <!-- Card 2: Matched -->
+        <div
+            class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-emerald-500/30 dark:hover:border-emerald-500/30 flex items-center justify-between transition-all duration-300 group">
+            <div>
+                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">Matched</span>
+                <div class="flex items-baseline gap-2 mt-1 mb-0.5">
+                    <span class="text-2xl font-black text-gray-900 dark:text-white tracking-tight"
+                        id="condition-kpi-matched-count">-</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-400 font-bold"
+                        id="condition-kpi-matched-pct">-</span>
+                </div>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-medium">Auto-configurations
+                    applied</span>
+            </div>
+            <div
+                class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform">
+                <span class="material-symbols-outlined text-[22px]">check_circle</span>
+            </div>
+        </div>
+
+        <!-- Card 3: Did Not Match -->
+        <div
+            class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-rose-500/30 dark:hover:border-rose-500/30 flex items-center justify-between transition-all duration-300 group">
+            <div>
+                <span class="text-xs font-bold text-rose-600 dark:text-rose-400">Did Not Match</span>
+                <div class="flex items-baseline gap-2 mt-1 mb-0.5">
+                    <span class="text-2xl font-black text-gray-900 dark:text-white tracking-tight"
+                        id="condition-kpi-unmatched-count">-</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-400 font-bold"
+                        id="condition-kpi-unmatched-pct">-</span>
+                </div>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-medium">Auto-configurations
+                    skipped</span>
+            </div>
+            <div
+                class="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-200/60 dark:border-rose-800/40 shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform">
+                <span class="material-symbols-outlined text-[22px]">cancel</span>
+            </div>
+        </div>
+
+        <!-- Card 4: Conditions -->
+        <div
+            class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-blue-500/30 dark:hover:border-blue-500/30 flex items-center justify-between transition-all duration-300 group">
+            <div>
+                <span class="text-xs font-bold text-blue-600 dark:text-blue-400">Conditions</span>
+                <div class="text-2xl font-black text-gray-900 dark:text-white mt-1 mb-0.5 tracking-tight"
+                    id="condition-kpi-conditions-total">-</div>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-medium">Total conditions evaluated</span>
+            </div>
+            <div
+                class="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform">
+                <span class="material-symbols-outlined text-[22px]">data_object</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Table Container -->
+    <div
+        class="bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col flex-1 min-h-[360px] transition-colors duration-300 overflow-hidden">
+        <!-- Filter Tabs & Group Control Bar -->
+        <div
+            class="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 px-6 py-2 bg-gray-50/40 dark:bg-slate-900/40 flex-shrink-0">
+            <!-- Left Tabs -->
+            <div class="flex items-center gap-1.5" id="condition-tabs-container">
+                <button data-action="filter-outcome" data-outcome="" id="condition-tab-all"
+                    class="px-3.5 py-2 text-xs font-bold text-primary dark:text-purple-300 bg-primary/10 dark:bg-purple-950/40 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border border-primary/20">
+                    All (<span id="condition-count-all">0</span>)
+                </button>
+                <button data-action="filter-outcome" data-outcome="MATCHED" id="condition-tab-matched"
+                    class="px-3.5 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-[16px] text-emerald-500">check_circle</span>
+                    Matched (<span id="condition-count-matched">0</span>)
+                </button>
+                <button data-action="filter-outcome" data-outcome="NOT_MATCHED" id="condition-tab-unmatched"
+                    class="px-3.5 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-[16px] text-rose-500">cancel</span>
+                    Did Not Match (<span id="condition-count-unmatched">0</span>)
+                </button>
+            </div>
+
+            <!-- Right Controls: Page Size, Group By & View Style Switcher -->
+            <div class="flex items-center gap-3">
+                <!-- Page size selector -->
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Show:</span>
+                    <select id="condition-page-size"
+                        class="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 outline-none hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all shadow-xs">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
+                <!-- Group By -->
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Group by:</span>
+                    <select id="condition-group-by"
+                        class="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-3 py-1.5 outline-none hover:border-gray-300 dark:hover:border-slate-700 cursor-pointer transition-all shadow-xs">
+                        <option value="none">None</option>
+                        <option value="package">Package</option>
+                        <option value="status">Status</option>
+                    </select>
+                </div>
+
+                <!-- Detail View Style Selector (Side-Sheet vs Inline Accordion) -->
+                <div class="flex items-center gap-1.5 pl-2 border-l border-gray-200 dark:border-slate-800">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">View:</span>
+                    <div class="inline-flex p-0.5 rounded-xl bg-gray-100 dark:bg-slate-950 border border-gray-200/80 dark:border-slate-800"
+                        id="condition-view-style-toggle">
+                        <button type="button" data-action="toggle-view-style" data-style="side-sheet"
+                            id="btn-view-style-side-sheet"
+                            class="px-2.5 py-1 text-[11px] font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer shadow-xs bg-white dark:bg-slate-900 text-primary dark:text-purple-300 font-bold"
+                            title="Sliding Side-Sheet Modal (Overlay Flyout)">
+                            <span class="material-symbols-outlined text-[14px]">dock_to_left</span>
+                            <span>Side Sheet</span>
+                        </button>
+                        <button type="button" data-action="toggle-view-style" data-style="inline"
+                            id="btn-view-style-inline"
+                            class="px-2.5 py-1 text-[11px] font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                            title="Expandable Inline Table Row (Accordion)">
+                            <span class="material-symbols-outlined text-[14px]">table_rows</span>
+                            <span>Inline</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Structure -->
+        <div class="overflow-x-auto overflow-y-auto flex-1 min-h-0 custom-scrollbar relative">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+                <thead class="sticky top-0 z-10 bg-gray-50/95 dark:bg-slate-800/95 backdrop-blur-xs shadow-xs">
+                    <tr
+                        class="border-b border-gray-100 dark:border-slate-800 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none">
+                        <th class="px-6 py-3.5 bg-gray-50/95 dark:bg-slate-800/95">Auto-configuration Class</th>
+                        <th class="px-4 py-3.5 bg-gray-50/95 dark:bg-slate-800/95">Status</th>
+                        <th class="px-4 py-3.5 w-48 bg-gray-50/95 dark:bg-slate-800/95">Conditions</th>
+                        <th class="px-4 py-3.5 bg-gray-50/95 dark:bg-slate-800/95">Outcome / Details</th>
+                        <th class="px-4 py-3.5 w-12 text-right bg-gray-50/95 dark:bg-slate-800/95"></th>
+                    </tr>
+                </thead>
+                <tbody id="condition-table-body" class="divide-y divide-gray-100 dark:divide-slate-800/60 text-xs">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div
+            class="px-6 py-3.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 mt-auto flex-shrink-0 z-10">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400" id="condition-pagination-info">Showing 0
+                to 0 of 0 results</div>
+            <div class="flex items-center gap-1.5" id="condition-pagination-buttons">
+                <!-- Populated dynamically via Pagination -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Option 2: Sliding Side-Sheet Modal (Overlay Flyout) -->
+<div id="condition-detail-overlay"
+    class="fixed inset-0 z-50 flex justify-end pointer-events-none transition-all duration-300 hidden">
+    <!-- Backdrop with blur -->
+    <div id="condition-detail-backdrop" data-action="close-detail"
+        class="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/70 backdrop-blur-xs transition-opacity duration-300 opacity-0 pointer-events-none cursor-pointer">
+    </div>
+
+    <!-- Slide-out Side-Sheet Drawer -->
+    <div id="condition-detail-panel"
+        class="relative w-full max-w-2xl bg-white dark:bg-slate-900 border-l border-gray-200/80 dark:border-slate-800 shadow-2xl h-full flex flex-col transform translate-x-full transition-transform duration-300 ease-out z-10 overflow-hidden pointer-events-auto">
+
+        <!-- Side-Sheet Header -->
+        <div
+            class="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/60 flex items-start justify-between gap-4 flex-shrink-0">
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2.5 flex-wrap mb-1.5">
+                    <span id="condition-detail-status-badge"
+                        class="px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1 shadow-xs flex-shrink-0">
+                        <span class="material-symbols-outlined text-[14px]" id="condition-detail-status-icon"></span>
+                        <span id="condition-detail-status-text">-</span>
+                    </span>
+                    <span id="condition-detail-context-badge"
+                        class="px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 text-[11px] font-mono font-semibold flex-shrink-0">
+                        -
+                    </span>
+                </div>
+                <h3 class="text-base font-bold font-mono text-gray-900 dark:text-white break-words break-all"
+                    id="condition-detail-class-name">-</h3>
+                <div class="text-xs text-gray-400 dark:text-gray-500 font-mono mt-1 break-all"
+                    id="condition-detail-package-name">-</div>
+            </div>
+            <button data-action="close-detail" id="condition-btn-close-detail"
+                class="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
+                title="Close details (Esc)">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        <!-- Side-Sheet Scrollable Content -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6 min-w-0">
+            <!-- Diagnostic Summary Card -->
+            <div class="space-y-4 min-w-0">
+                <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Evaluation
+                    Summary</h4>
+
+                <!-- Reason Banner -->
+                <div class="flex items-start gap-2.5 text-xs font-semibold p-3.5 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-gray-50/60 dark:bg-slate-950/40 w-full min-w-0"
+                    id="condition-detail-reason-container">
+                    <span class="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5"
+                        id="condition-detail-reason-icon"></span>
+                    <div class="flex-1 min-w-0">
+                        <span id="condition-detail-reason-text"
+                            class="text-gray-800 dark:text-gray-200 leading-relaxed block break-words break-all whitespace-pre-wrap"></span>
+                    </div>
+                </div>
+
+                <!-- Code / Requirement Box -->
+                <div
+                    class="bg-gray-50/70 dark:bg-slate-950/80 border border-gray-200/80 dark:border-slate-800/90 rounded-xl p-4 font-mono text-xs space-y-2.5 w-full min-w-0 overflow-hidden">
+                    <div class="min-w-0">
+                        <span
+                            class="text-gray-400 dark:text-gray-500 block text-[11px] font-sans font-semibold mb-0.5">Auto-configuration:</span>
+                        <span class="text-gray-800 dark:text-gray-200 font-bold break-all block"
+                            id="condition-detail-source-full">-</span>
+                    </div>
+                    <div class="min-w-0">
+                        <span
+                            class="text-gray-400 dark:text-gray-500 block text-[11px] font-sans font-semibold mb-0.5">Context
+                            ID:</span>
+                        <span class="text-gray-700 dark:text-gray-300 font-semibold break-all block"
+                            id="condition-detail-context-id">-</span>
+                    </div>
+                    <div id="condition-detail-reason-box"
+                        class="pt-2.5 border-t border-gray-200/60 dark:border-slate-800/60 min-w-0">
+                        <span
+                            class="text-gray-400 dark:text-gray-500 block mb-1 font-sans font-semibold text-[11px]">Diagnostic
+                            Detail:</span>
+                        <p class="text-gray-700 dark:text-gray-300 break-words break-all leading-relaxed whitespace-pre-wrap font-mono max-h-72 overflow-y-auto custom-scrollbar select-text pr-1"
+                            id="condition-detail-diagnostic-msg">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condition Outcomes Section -->
+            <div class="space-y-3 min-w-0">
+                <div class="flex items-center justify-between pb-1 border-b border-gray-100 dark:border-slate-800">
+                    <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Condition
+                        Outcomes</h4>
+                    <span class="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 flex-shrink-0"
+                        id="condition-detail-matches-count">0 conditions</span>
+                </div>
+
+                <div class="space-y-3 w-full min-w-0" id="condition-detail-matches-list">
+                    <!-- Populated dynamically via tpl-condition-match-item -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Side-Sheet Footer -->
+        <div
+            class="p-4 px-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/60 flex items-center justify-between flex-shrink-0">
+            <span class="text-xs text-gray-400 dark:text-gray-500">Press <kbd
+                    class="px-1.5 py-0.5 text-[10px] font-mono bg-gray-200 dark:bg-slate-800 rounded text-gray-600 dark:text-gray-300 font-bold border border-gray-300 dark:border-slate-700">Esc</kbd>
+                to close</span>
+            <button data-action="close-detail"
+                class="px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer shadow-xs">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Option 3: Reusable Expandable Inline Table Row Template (Accordion) -->
+<template id="tpl-condition-expanded-row">
+    <tr
+        class="condition-expanded-row bg-purple-50/20 dark:bg-purple-950/20 border-b border-gray-100 dark:border-slate-800 select-text">
+        <td colspan="5" class="p-0">
+            <div class="condition-accordion-wrapper">
+                <div class="condition-accordion-inner">
+                    <div class="px-4 sm:px-8 py-5 border-l-4 border-primary space-y-4 min-w-0">
+                        <!-- Header inside the expanded row -->
+                        <div
+                            class="flex items-center justify-between gap-4 pb-3 border-b border-gray-200/60 dark:border-slate-800/60">
+                            <div class="flex items-center gap-3 flex-wrap min-w-0 flex-1">
+                                <span class="text-xs font-bold font-mono text-gray-900 dark:text-white break-words break-all"
+                                    data-field="className">-</span>
+                                <span data-field="statusBadge" class="flex-shrink-0">
+                                    <span class="material-symbols-outlined text-[14px]" data-field="statusIcon"></span>
+                                    <span data-field="statusText">-</span>
+                                </span>
+                                <span data-field="contextBadge"
+                                    class="px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 text-[11px] font-mono font-semibold flex-shrink-0"></span>
+                            </div>
+                            <button data-action="close-detail"
+                                class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
+                                title="Collapse (Esc)">
+                                <span class="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </div>
+
+                        <!-- 2-Column Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                            <!-- Left: Diagnostic Summary -->
+                            <div class="space-y-3 min-w-0 w-full">
+                                <h4
+                                    class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Evaluation Summary</h4>
+
+                                <!-- Reason Banner -->
+                                <div class="flex items-start gap-2.5 text-xs font-semibold p-3 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs w-full min-w-0"
+                                    data-field="reasonContainer">
+                                    <span class="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5"
+                                        data-field="reasonIcon"></span>
+                                    <div class="flex-1 min-w-0">
+                                        <span data-field="reasonText"
+                                            class="text-gray-800 dark:text-gray-200 leading-relaxed block break-words break-all whitespace-pre-wrap"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Technical Box -->
+                                <div
+                                    class="bg-white/80 dark:bg-slate-950/60 border border-gray-200/80 dark:border-slate-800/80 rounded-xl p-3.5 font-mono text-xs space-y-2 w-full min-w-0 overflow-hidden">
+                                    <div class="min-w-0">
+                                        <span
+                                            class="text-gray-400 dark:text-gray-500 block text-[10px] font-sans font-semibold mb-0.5">Source:</span>
+                                        <span class="text-gray-800 dark:text-gray-200 font-bold break-all block"
+                                            data-field="sourceFull">-</span>
+                                    </div>
+                                    <div class="pt-2 border-t border-gray-200/60 dark:border-slate-800/60 min-w-0">
+                                        <span
+                                            class="text-gray-400 dark:text-gray-500 block mb-1 font-sans font-semibold text-[10px]">Diagnostic
+                                            Detail:</span>
+                                        <p class="text-gray-700 dark:text-gray-300 break-words break-all leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto custom-scrollbar select-text pr-1"
+                                            data-field="diagnosticMsg">-</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Condition Outcomes -->
+                            <div class="space-y-2.5 min-w-0 w-full">
+                                <div
+                                    class="flex items-center justify-between pb-1 border-b border-gray-200/60 dark:border-slate-800/60">
+                                    <h4
+                                        class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Condition Outcomes</h4>
+                                    <span class="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 flex-shrink-0"
+                                        data-field="matchesCount">0 conditions</span>
+                                </div>
+                                <div class="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1 w-full min-w-0"
+                                    data-field="matchesList">
+                                    <!-- Populated dynamically via tpl-condition-match-item -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<!-- Reusable UI Templates -->
+<template id="tpl-condition-row">
+    <tr class="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer condition-row group"
+        data-action="select-condition">
+        <td class="px-6 py-4">
+            <div class="font-bold text-sm text-gray-900 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-purple-300 transition-colors break-words"
+                data-field="className"></div>
+            <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono mt-0.5 break-all"
+                data-field="packageName"></div>
+        </td>
+        <td class="px-4 py-4 whitespace-nowrap">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1 shadow-xs"
+                data-field="statusBadge">
+                <span class="material-symbols-outlined text-[14px]" data-field="statusIcon"></span>
+                <span data-field="statusText"></span>
+            </span>
+        </td>
+        <td class="px-4 py-4">
+            <div class="flex flex-col gap-1.5 w-36">
+                <span class="font-mono text-xs text-gray-700 dark:text-gray-300 font-bold"
+                    data-field="conditionRatio"></span>
+                <div class="h-1.5 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-300" data-field="progressBar"></div>
+                </div>
+            </div>
+        </td>
+        <td class="px-4 py-4">
+            <div class="flex items-center gap-2 min-w-0 max-w-md">
+                <span class="w-2 h-2 rounded-full flex-shrink-0" data-field="outcomeDot"></span>
+                <span class="text-xs font-medium text-gray-600 dark:text-gray-300 truncate"
+                    data-field="outcomeSummary"></span>
+            </div>
+        </td>
+        <td class="px-4 py-4 text-right whitespace-nowrap">
+            <span
+                class="material-symbols-outlined text-[18px] text-gray-400 group-hover:text-primary dark:group-hover:text-purple-300 transition-transform duration-500 transform inline-block"
+                data-field="expandIcon">keyboard_arrow_right</span>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-condition-group-header">
+    <tr class="bg-gray-100/70 dark:bg-slate-800/60 font-bold text-xs text-gray-700 dark:text-gray-300 select-none">
+        <td colspan="5" class="px-6 py-2.5">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px] text-gray-500 dark:text-gray-400"
+                    data-field="groupIcon">folder</span>
+                <span data-field="groupTitle" class="font-mono font-bold"></span>
+                <span
+                    class="px-2 py-0.5 text-[10px] rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300 font-bold"
+                    data-field="groupCount"></span>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-condition-match-item">
+    <div
+        class="flex items-start justify-between gap-4 p-3.5 rounded-xl border border-gray-100 dark:border-slate-800/80 bg-gray-50/40 dark:bg-slate-950/40 shadow-xs w-full min-w-0">
+        <div class="flex items-start gap-2.5 min-w-0 flex-1">
+            <span class="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5" data-field="matchIcon"></span>
+            <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold text-gray-800 dark:text-gray-200 font-mono break-words break-all" data-field="conditionName">
+                </div>
+                <div class="text-[11px] text-gray-600 dark:text-gray-400 font-mono break-words break-all mt-1 leading-relaxed whitespace-pre-wrap"
+                    data-field="matchMessage"></div>
+            </div>
+        </div>
+        <span class="text-xs font-bold font-mono whitespace-nowrap px-2.5 py-0.5 rounded-full flex-shrink-0"
+            data-field="matchStatusBadge"></span>
+    </div>
+</template>
+
+<template id="tpl-condition-loading">
+    <tr>
+        <td colspan="5" class="py-16 text-center text-gray-400">
+            <div class="flex flex-col items-center justify-center gap-2.5">
+                <span class="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent"></span>
+                <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Loading condition
+                    evaluations...</span>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-condition-empty">
+    <tr>
+        <td colspan="5" class="py-16 text-center text-gray-400">
+            <div class="flex flex-col items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[36px] text-gray-300 dark:text-gray-600">rule</span>
+                <p class="text-xs font-semibold" data-field="emptyMessage">No condition evaluations found</p>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500">Try adjusting your search query or
+                    filters</span>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<template id="tpl-condition-error">
+    <tr>
+        <td colspan="5" class="py-16 text-center text-rose-500">
+            <div class="flex flex-col items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[36px]">error</span>
+                <p class="text-xs font-semibold" data-field="errorMessage">Failed to load condition evaluations</p>
+                <button data-action="refresh-data"
+                    class="mt-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 rounded-lg text-xs font-semibold hover:bg-rose-100 transition-colors cursor-pointer">
+                    Retry
+                </button>
+            </div>
+        </td>
+    </tr>
+</template>

@@ -1,23 +1,3 @@
-<!-- Topbar -->
-<header
-    class="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 sm:px-8 py-4 flex items-center justify-between z-10 flex-shrink-0 h-[72px] transition-colors duration-300">
-    <div>
-        <h1 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            Platform Overview
-        </h1>
-        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
-            SpringLens <span class="material-symbols-outlined text-[14px]">chevron_right</span> Dashboard
-        </div>
-    </div>
-    <div class="flex items-center gap-3">
-        <button id="btn-refresh-dashboard"
-            class="w-9 h-9 flex items-center justify-center border border-gray-200 dark:border-slate-700 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 shadow-sm transition-all cursor-pointer"
-            title="Refresh dashboard metrics">
-            <span class="material-symbols-outlined text-[18px]" id="refresh-icon">refresh</span>
-        </button>
-    </div>
-</header>
-
 <!-- Dashboard Content Container -->
 <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
 
@@ -70,7 +50,7 @@
                     <div class="flex items-center gap-3">
                         <span
                             class="px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-primary/30 text-purple-200 border border-purple-400/30">
-                            Spring App
+                            Spring Boot App
                         </span>
                         <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2"
                             data-field="appName" id="hero-app-name">
@@ -79,7 +59,7 @@
                     </div>
                     <p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed max-w-2xl">
                         Real-time observability snapshot, bean lifecycle intelligence, dependency telemetry, and
-                        auto-configuration reports.
+                        auto-configuration reports and many more. Keep using our tool to get new feature.
                     </p>
                 </div>
 
@@ -92,8 +72,10 @@
                             <span class="material-symbols-outlined text-[20px]">history_toggle_off</span>
                         </div>
                         <div>
-                            <span class="text-[10px] uppercase font-bold text-slate-300 tracking-wider block">Uptime</span>
-                            <span class="text-sm font-bold text-white font-mono" data-field="uptime" id="hero-app-uptime">--</span>
+                            <span
+                                class="text-[10px] uppercase font-bold text-slate-300 tracking-wider block">Uptime</span>
+                            <span class="text-sm font-bold text-white font-mono" data-field="uptime"
+                                id="hero-app-uptime">--</span>
                         </div>
                     </div>
                 </div>
@@ -186,7 +168,7 @@
                         class="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-sm transition-all inline-flex items-center gap-1.5 border border-white/10 hover:scale-[1.02]">
                         <span class="material-symbols-outlined text-[16px] text-purple-300">list_alt</span> Definitions
                     </a>
-                    <a href="#/timeline"
+                    <a href="#/instances"
                         class="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-sm transition-all inline-flex items-center gap-1.5 border border-white/10 hover:scale-[1.02]">
                         <span class="material-symbols-outlined text-[16px] text-emerald-300">timelapse</span> Instances
                     </a>
@@ -231,7 +213,7 @@
         </a>
 
         <!-- KPI 2: Runtime Instances -->
-        <a href="#/timeline"
+        <a href="#/instances"
             class="group bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-800/80 transition-all flex flex-col justify-between cursor-pointer">
             <div class="flex items-center justify-between mb-3">
                 <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bean
@@ -453,9 +435,9 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Beans with longest initialization latency
                     </p>
                 </div>
-                <a href="#/timeline"
+                <a href="#/instances"
                     class="text-xs font-semibold text-primary dark:text-purple-400 hover:underline flex items-center gap-0.5">
-                    Full Timeline <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    All Instances <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
                 </a>
             </div>
 
@@ -675,7 +657,7 @@
                 title="Inspect in Dependency Graph">Graph</button>
             <button type="button"
                 class="btn-goto-inst px-1.5 py-0.5 rounded text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                title="View Initialization Timeline">Inst</button>
+                title="View Bean Instances">Inst</button>
         </div>
     </div>
 </template>
@@ -710,8 +692,7 @@
 <template id="tpl-dashboard-uptime-active">
     <div
         class="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-inner">
-        <div
-            class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
             <span class="material-symbols-outlined text-[20px]">history_toggle_off</span>
         </div>
         <div>
@@ -724,8 +705,7 @@
 <template id="tpl-dashboard-uptime-down">
     <div
         class="bg-rose-500/15 backdrop-blur-md border border-rose-400/30 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-inner">
-        <div
-            class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 flex items-center justify-center">
+        <div class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 flex items-center justify-center">
             <span class="material-symbols-outlined text-[20px]">cloud_off</span>
         </div>
         <div>

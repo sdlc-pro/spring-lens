@@ -1,21 +1,20 @@
-import httpClient from '../../client/http-client.js';
-import beanDataStore from '../../storage/bean-data-store.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
+import httpClient from '../helper/http-client.js';
+import beanDataStore from '../helper/bean-data-store.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
 import {
     tree, tbLink, lrLink, nodeStyle,
     NW, NH, RX, GAP_X, GAP_Y, ICON, ZOOM_SCALE_EXTENT,
     PROGRESS_BADGE_STYLES, ALL_PROGRESS_BADGE_CLASSES, ALL_PROGRESS_DOT_CLASSES,
     TemplateEngine, QueryParam, Sidebar, ToastNotification, BeanSearchEngine, debounce,
     resolveBeanMetadata
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
-export default class GraphController {
+export default class DependencyGraph {
 
-    constructor(dependencyGraphApi, beanDefinitions, findBeanDefinitions) {
-
-        this.beanDefinitions = beanDefinitions;
-        this.dependencyGraphApi = dependencyGraphApi;
-        this.findBeanDefinitionsApi = findBeanDefinitions;
+    constructor(endpoints = {}) {
+        this.dependencyGraphApi = endpoints.GRAPH_DEPENDENCIES;
+        this.beanDefinitions = endpoints.BEAN_DEFINITION;
+        this.findBeanDefinitionsApi = endpoints.FIND_BEAN_DEFINITION;
 
         this.root = null;
         this.svg = null;
@@ -1187,8 +1186,8 @@ export default class GraphController {
         localStorage.setItem('sl-layout', layoutMode);
 
         const isTopBottom = layoutMode === 'tb';
-        const activeClasses = 'bg-white text-gray-800 shadow-sm';
-        const inactiveClasses = 'text-gray-500 hover:text-gray-800';
+        const activeClasses = 'bg-white dark:bg-slate-800 text-gray-800 dark:text-white shadow-xs font-bold';
+        const inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white font-medium';
 
         // Batch toggle button styling
         $('#btn-tb')
@@ -1262,6 +1261,13 @@ export default class GraphController {
                 this._debouncedGraphSearch?.cancel();
                 $('#search-input').val('');
                 $('#search-suggestions').hide().empty();
+            }
+        });
+
+        $(document).off('keydown.graphSearchShortcut').on('keydown.graphSearchShortcut', (event) => {
+            if (event.key === '/' && !$(event.target).is('input, textarea, select')) {
+                event.preventDefault();
+                $('#search-input').focus();
             }
         });
 
@@ -1463,7 +1469,6 @@ export default class GraphController {
         return {
             'btn-expand': () => this._mutateTreeNodes(node => node.children = node._children),
             'btn-collapse': () => this._mutateTreeNodes(node => { if (node.depth > 0) node.children = null; }),
-            'btn-reset': () => this._mutateTreeNodes(node => node.children = node.depth === 0 ? node._children : null),
             'btn-control-zoom-in': () => this.zoomBy(1.25),
             'btn-control-zoom-out': () => this.zoomBy(0.8),
             'btn-control-fit': () => this.fitView(),
@@ -1566,6 +1571,7 @@ export default class GraphController {
         this.closeSidebar();
         this.clearFocusedNode();
         this._debouncedGraphSearch?.cancel();
+        $(document).off('keydown.graphSearchShortcut');
         $('#search-input').val('');
         $('#search-results').addClass('hidden').empty();
         $('#tip').removeClass('show');

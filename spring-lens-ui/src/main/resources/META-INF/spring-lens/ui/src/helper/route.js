@@ -1,5 +1,5 @@
-import TemplateEngine from '../utils/template-engine.js';
-import { NAV_STYLES } from '../utils/index.js';
+import TemplateEngine from './template-engine.js';
+import { NAV_STYLES, PageHeader } from './index.js';
 
 export default class Route {
 
@@ -7,9 +7,11 @@ export default class Route {
         this.activeRouteKey = null;
         this.templateCache  = new Map();
         this.routes         = config.routes ?? {};
-        this.pagesDir       = config.pagesDir ?? './src/pages/';
+        this.pagesDir       = config.pagesDir ?? './src/views/';
         this.container      = $(config.container ?? '#main-content');
         this.defaultRoute   = config.defaultRoute ?? 'definitions';
+        this.appTitle       = config.appTitle ?? 'Spring Lens';
+        this.titleSeparator = config.titleSeparator ?? ' | ';
     }
 
     init() {
@@ -81,6 +83,12 @@ export default class Route {
             return;
         }
 
+        if (route.redirectTo) {
+            const query = queryString ? `?${queryString}` : '';
+            window.location.hash = `#/${route.redirectTo}${query}`;
+            return;
+        }
+
         // 1. Execute onLeave hook of previous active route
         if (this.activeRouteKey && this.activeRouteKey !== routeKey) {
             try {
@@ -102,7 +110,17 @@ export default class Route {
 
             try {
                 const html = await this._loadTemplate(routeKey, route.template);
-                this.container.html(html);
+                this.container.empty();
+
+                // 3. Render dynamic page header if configured
+                if (route.header) {
+                    const headerNode = PageHeader.render(route.header);
+                    if (headerNode) {
+                        this.container.append(headerNode);
+                    }
+                }
+
+                this.container.append(html);
                 route.onEnter?.(params);
             } catch (error) {
                 console.error(`Routing error loading template for ${routeKey}:`, error);
@@ -115,6 +133,20 @@ export default class Route {
         }
 
         this.updateSidebarVisuals(routeKey);
+        this._updateDocumentTitle(route);
+    }
+
+    /**
+     * Dynamically updates the document title based on route config.
+     * @private
+     */
+    _updateDocumentTitle(route) {
+        const pageTitle = route.title || route.header?.title;
+        if (pageTitle) {
+            document.title = `${this.appTitle}${this.titleSeparator}${pageTitle}`;
+        } else {
+            document.title = this.appTitle;
+        }
     }
 
     /**

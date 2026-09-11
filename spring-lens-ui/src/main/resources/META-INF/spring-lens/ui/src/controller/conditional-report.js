@@ -1,21 +1,20 @@
-import httpClient from '../../client/http-client.js';
+import httpClient from '../helper/http-client.js';
 import {
     CSS_CLASSES,
     CONDITION_STATUS_THEMES,
     TemplateEngine,
     QueryParam,
     Pagination,
-    BeanSearchEngine,
     debounce
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
 
-export default class ConditionalEvaluationController{
+export default class ConditionalReport {
 
-    constructor(conditionalEvaluationApiUrl, searchConditionalEvaluationApiUrl, summaryConditionApi) {
-        this.conditionEvaluationApiUrl = conditionalEvaluationApiUrl;
-        this.searchConditionalEvaluationApiUrl = searchConditionalEvaluationApiUrl;
-        this.summaryConditionApiUrl = summaryConditionApi;
+    constructor(endpoints = {}) {
+        this.conditionEvaluationApiUrl = endpoints.CONDITIONAL_REPORTS;
+        this.searchConditionalEvaluationApiUrl = endpoints.FIND_CONDITIONAL_REPORTS;
+        this.summaryConditionApiUrl = endpoints.SUMMARY_CONDITIONAL_REPORTS;
 
         // Active data state
         this.conditions = [];
@@ -98,7 +97,7 @@ export default class ConditionalEvaluationController{
                 this.fetchConditionEvaluationData()
             ]);
         } catch (error) {
-            console.error('Error entering ConditionalEvaluationController:', error);
+            console.error('Error entering ConditionalReport:', error);
         }
     }
 
@@ -611,9 +610,13 @@ export default class ConditionalEvaluationController{
             );
         } else {
             $reasonIcon.text('cancel').removeClass('text-emerald-500').addClass('text-red-500');
+            const failedMatches = matches.filter(m => !m.matched);
             const failureReason = failedMatch?.message || 'One or more required conditions did not match.';
             $reasonText.text(failureReason);
-            $('#condition-detail-diagnostic-msg').text(failureReason);
+            const diagnosticDetails = failedMatches.length > 1
+                ? failedMatches.map(m => `• ${this._formatConditionName(m.condition)}: ${m.message}`).join('\n')
+                : failureReason;
+            $('#condition-detail-diagnostic-msg').text(diagnosticDetails);
         }
 
         // Render Condition Outcomes List
@@ -716,9 +719,13 @@ export default class ConditionalEvaluationController{
             );
         } else {
             $reasonIcon.text('cancel').addClass('text-red-500');
+            const failedMatches = matches.filter(m => !m.matched);
             const failureReason = failedMatch?.message || 'One or more required conditions did not match.';
             $reasonText.text(failureReason);
-            $diagMsg.text(failureReason);
+            const diagnosticDetails = failedMatches.length > 1
+                ? failedMatches.map(m => `• ${this._formatConditionName(m.condition)}: ${m.message}`).join('\n')
+                : failureReason;
+            $diagMsg.text(diagnosticDetails);
         }
 
         // Render Condition Outcomes List

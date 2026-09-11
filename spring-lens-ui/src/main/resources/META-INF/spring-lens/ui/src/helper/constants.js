@@ -53,8 +53,8 @@ const CSS_CLASSES = {
     navInactive: NAV_STYLES.parent.inactive,
     subnavActive: NAV_STYLES.sublink.active,
     subnavInactive: NAV_STYLES.sublink.inactive,
-    rowActive: 'bg-primary-light/40 dark:bg-primary/20 font-semibold border-l-4 border-primary',
-    defRowActive: 'bg-primary-light/40 border-l-2 border-primary font-medium',
+    rowActive: 'row-active bg-gradient-to-r from-purple-100/70 via-purple-50/40 to-transparent dark:from-purple-950/60 dark:via-purple-900/20 dark:to-transparent font-semibold border-l-4 border-primary dark:border-purple-400',
+    defRowActive: 'def-row-active bg-gradient-to-r from-purple-100/70 via-purple-50/40 to-transparent dark:from-purple-950/60 dark:via-purple-900/20 dark:to-transparent border-l-2 border-primary dark:border-purple-400 font-medium',
     toggleActive: 'bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-white shadow-sm',
     toggleInactive: 'text-gray-500 dark:text-gray-400',
     pillActive: 'bg-primary/10 dark:bg-purple-950/40 text-primary dark:text-purple-300 font-bold border border-primary/20 shadow-xs',
@@ -81,24 +81,25 @@ const BEAN_TYPE_RULES = [
 ];
 
 const SCOPE_COLORS = {
-    'Singleton': '#6b46c1',
-    'Prototype': '#3b82f6',
+    'Singleton': '#8b5cf6',
+    'Prototype': '#06b6d4',
     'Request': '#f59e0b',
-    'Session': '#22c55e',
-    'Unknown': '#cbd5e1'
+    'Session': '#10b981',
+    'Refresh': '#ec4899',
+    'Unknown': '#94a3b8'
 };
 
 const ROLE_COLORS = {
     'Application': '#3b82f6',
-    'Support': '#f59e0b',
-    'Infrastructure': '#e2e8f0',
-    'Unknown': '#cbd5e1'
+    'Infrastructure': '#f43f5e',
+    'Support': '#14b8a6',
+    'Unknown': '#94a3b8'
 };
 
 const LOADING_MODE_COLORS = {
     'Lazy': '#a855f7',
-    'Eager': '#3b82f6',
-    'Unknown': '#cbd5e1'
+    'Eager': '#0ea5e9',
+    'Unknown': '#94a3b8'
 };
 
 const SCOPE_STYLES = {
@@ -118,6 +119,15 @@ const SCOPE_STYLES = {
         bg: '#f0fdf4', fg: '#15803d', border: '#bbf7d0',
         darkBg: 'rgba(21, 128, 61, 0.15)', darkFg: '#86efac', darkBorder: 'rgba(21, 128, 61, 0.3)'
     }
+};
+
+const SCOPE_BADGE_CLASSES = {
+    singleton: 'bg-gradient-to-r from-purple-500/15 via-purple-500/10 to-indigo-500/10 text-purple-900 dark:text-purple-200 border-purple-300/80 dark:border-purple-500/40',
+    prototype: 'bg-gradient-to-r from-blue-500/15 via-sky-500/10 to-cyan-500/10 text-blue-900 dark:text-blue-200 border-blue-300/80 dark:border-blue-500/40',
+    request: 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-yellow-500/10 text-amber-900 dark:text-amber-200 border-amber-300/80 dark:border-amber-500/40',
+    session: 'bg-gradient-to-r from-emerald-500/15 via-green-500/10 to-teal-500/10 text-emerald-900 dark:text-emerald-200 border-emerald-300/80 dark:border-emerald-500/40',
+    refresh: 'bg-gradient-to-r from-pink-500/15 via-rose-500/10 to-purple-500/10 text-pink-900 dark:text-pink-200 border-pink-300/80 dark:border-pink-500/40',
+    default: 'bg-gradient-to-r from-slate-500/15 via-gray-500/10 to-zinc-500/10 text-slate-900 dark:text-slate-200 border-slate-300/80 dark:border-slate-500/40'
 };
 
 const DEFAULT_SCOPE_STYLE = {
@@ -218,6 +228,101 @@ const LATENCY_THEME_RULES = [
     }
 ];
 
+const BEAN_LAYER_RULES = [
+    {
+        id: 'web',
+        label: 'Web Layer',
+        color: '#ef4444',
+        icon: 'api',
+        keywords: [
+            'controller', 'rest', 'mapper', 'objectmapper', 'json', 'jackson',
+            'serializer', 'deserializer', 'viewresolver', 'endpoint', 'router', 'feign', 'web'
+        ]
+    },
+    {
+        id: 'business',
+        label: 'Business Logic',
+        color: '#f59e0b',
+        icon: 'settings_input_component',
+        keywords: [
+            'service', 'manager', 'handler', 'facade', 'usecase', 'logic', 'processor', 'validator'
+        ]
+    },
+    {
+        id: 'data',
+        label: 'Data Access',
+        color: '#10b981',
+        icon: 'database',
+        keywords: [
+            'datasource', 'entitymanager', 'transaction', 'repository', 'dao', 'jpa',
+            'hibernate', 'jdbc', 'connection', 'flyway', 'liquibase', 'sql'
+        ]
+    },
+    {
+        id: 'infra',
+        label: 'Infrastructure',
+        color: '#3b82f6',
+        icon: 'memory',
+        keywords: [
+            'logging', 'logger', 'scheduler', 'task', 'security', 'auth', 'filter',
+            'cache', 'meter', 'metrics', 'health', 'actuator', 'management', 'kafka', 'rabbit', 'jms', 'template'
+        ]
+    },
+    {
+        id: 'config',
+        label: 'Configuration',
+        color: '#8b5cf6',
+        icon: 'settings',
+        keywords: [
+            'config', 'properties', 'postprocessor', 'initializer', 'environment',
+            'autoconfiguration', 'factory', 'context', 'profile'
+        ]
+    }
+];
+
+const DEFAULT_BEAN_LAYER = {
+    id: 'other',
+    label: 'Other',
+    color: '#94a3b8',
+    icon: 'deployed_code'
+};
+
+const PROXY_BADGE_STYLES = {
+    JDK_DYNAMIC: {
+        pill: 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50',
+        tab: 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'
+    },
+    CGLIB: {
+        pill: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50',
+        tab: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
+    },
+    DIRECT: {
+        pill: '',
+        tab: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
+    }
+};
+
+const ADVICE_FROZEN_STYLES = {
+    true: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40',
+    false: 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-slate-800 dark:text-gray-300 dark:border-slate-700'
+};
+
+const DEFINITION_STATUS_STYLES = {
+    true: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40',
+    false: 'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-slate-800 dark:text-gray-400 dark:border-slate-700'
+};
+
+const TAB_BUTTON_STYLES = {
+    active: 'bg-white dark:bg-slate-800 text-primary dark:text-purple-300 font-bold shadow-xs',
+    inactive: 'text-gray-500 dark:text-gray-400 font-semibold'
+};
+
+const ALL_PROXY_PILL_CLASSES = Object.values(PROXY_BADGE_STYLES).map(s => s.pill).filter(Boolean).join(' ');
+const ALL_PROXY_TAB_CLASSES = Object.values(PROXY_BADGE_STYLES).map(s => s.tab).filter(Boolean).join(' ');
+const ALL_ADVICE_FROZEN_CLASSES = Object.values(ADVICE_FROZEN_STYLES).join(' ');
+const ALL_DEFINITION_STATUS_CLASSES = Object.values(DEFINITION_STATUS_STYLES).join(' ');
+const ALL_TAB_BUTTON_CLASSES = Object.values(TAB_BUTTON_STYLES).join(' ');
+
 export {
     NW,
     NH,
@@ -233,11 +338,23 @@ export {
     NAV_STYLES,
     CSS_CLASSES,
     BEAN_TYPE_RULES,
+    BEAN_LAYER_RULES,
+    DEFAULT_BEAN_LAYER,
+    PROXY_BADGE_STYLES,
+    ALL_PROXY_PILL_CLASSES,
+    ALL_PROXY_TAB_CLASSES,
+    ADVICE_FROZEN_STYLES,
+    ALL_ADVICE_FROZEN_CLASSES,
+    DEFINITION_STATUS_STYLES,
+    ALL_DEFINITION_STATUS_CLASSES,
+    TAB_BUTTON_STYLES,
+    ALL_TAB_BUTTON_CLASSES,
     SCOPE_COLORS,
     ROLE_COLORS,
     LOADING_MODE_COLORS,
     SCOPE_STYLES,
     DEFAULT_SCOPE_STYLE,
+    SCOPE_BADGE_CLASSES,
     DEPENDENCY_CATEGORY_COLORS,
     CONTEXT_THEME_COLORS,
     GRAPH_NODE_THEMES_TINT,
@@ -249,3 +366,4 @@ export {
     ALL_PROGRESS_DOT_CLASSES,
     LATENCY_THEME_RULES
 };
+

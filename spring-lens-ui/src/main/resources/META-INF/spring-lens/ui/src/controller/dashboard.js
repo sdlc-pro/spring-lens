@@ -1,5 +1,5 @@
-import httpClient from '../../client/http-client.js';
-import GraphTreeBuilder from '../../builder/graph-tree-builder.js';
+import httpClient from '../helper/http-client.js';
+import GraphTreeBuilder from '../helper/graph-tree-builder.js';
 import {
     resolveBeanMetadata,
     resolveLatencyTheme,
@@ -11,24 +11,30 @@ import {
     QueryParam,
     TemplateEngine,
     BeanSearchEngine,
+    PageHeader,
     debounce
-} from '../../utils/index.js';
+} from '../helper/index.js';
 
-export default class DashboardController {
+export default class Dashboard {
 
-    constructor(ENDPOINTS = {}) {
-         this.endpoints = {
-             application: ENDPOINTS.APPLICATION_INFO,
-             definitions: ENDPOINTS.BEAN_DEFINITION,
-             instances: ENDPOINTS.BEAN_INSTANCE,
-             conditions: ENDPOINTS.CONDITIONAL_REPORTS,
-             dependencies: ENDPOINTS.GRAPH_DEPENDENCIES,
-             definitionsSummary: ENDPOINTS.SUMMARY_BEAN_DEFINITION
-         };
+    constructor(ENDPOINTS = {}, applicationState = null) {
+        this.endpoints = {
+            application: ENDPOINTS.APPLICATION_INFO,
+            definitions: ENDPOINTS.BEAN_DEFINITION,
+            instances: ENDPOINTS.BEAN_INSTANCE,
+            conditions: ENDPOINTS.CONDITIONAL_REPORTS,
+            dependencies: ENDPOINTS.GRAPH_DEPENDENCIES,
+            definitionsSummary: ENDPOINTS.SUMMARY_BEAN_DEFINITION
+        };
 
-        this.applicationState = null;
-        this.applicationState?.onStateChange((isLive) => {
-            this.renderUptimeStatus(isLive);
+        this.applicationState = applicationState;
+        this.applicationState?.onStateChange((isHealthIsUp) => {
+            const wasDown = this.currentUptimeState === false;
+            this.renderUptimeStatus(isHealthIsUp);
+
+            if (isHealthIsUp && wasDown) {
+                this.loadAllDashboardData();
+            }
         });
 
         this.applicationData = null;
@@ -67,7 +73,7 @@ export default class DashboardController {
             this._bindEventListeners();
             await this.loadAllDashboardData();
         } catch (error) {
-            console.error('Failed to initialize DashboardController:', error);
+            console.error('Failed to initialize Dashboard:', error);
         }
     }
 
@@ -116,6 +122,7 @@ export default class DashboardController {
         // 2. Setup standard click actions
         const clickActions = {
             '#db-btn-retry': () => this.enter(),
+            '#btn-refresh-dashboard': () => this.enter(),
             '#btn-radial-zoom-in': () => this._zoomRadial(1.25),
             '#btn-radial-zoom-out': () => this._zoomRadial(0.8),
             '#btn-radial-reset': () => this._resetRadialZoom(),
@@ -189,7 +196,7 @@ export default class DashboardController {
     async loadAllDashboardData() {
         await Promise.allSettled([
             this.applicationState?.checkHealth()
-                .then(isLive => this.renderUptimeStatus(isLive)),
+                .then(isHealthIsUp => this.renderUptimeStatus(isHealthIsUp)),
 
             httpClient.get(this.endpoints.application)
                 .then(data => this.renderApplicationInfo(this.applicationData = data))
@@ -234,7 +241,7 @@ export default class DashboardController {
         const $hero = $('#hero-application-banner');
 
         const fieldMap = {
-            appName: vm.name,
+            appName: vm.name ? vm.name.toUpperCase() : '',
             bootVersion: `v${vm.bootVersion}`,
             frameworkVersion: `v${vm.frameworkVersion}`,
             javaVersion: `Java ${vm.javaVersion}`,
@@ -245,6 +252,11 @@ export default class DashboardController {
 
         this._bindDataFields($hero, fieldMap);
         this._renderProfileBadges(vm.activeProfiles, vm.defaultProfiles);
+        if (this.applicationState) {
+            this.applicationState.setAppInfo(app);
+        } else {
+            PageHeader.setAppName(vm.name);
+        }
 
         this.appStartDate = vm.startDate;
         if (vm.startDate && this.currentUptimeState !== false) {
@@ -500,19 +512,37 @@ export default class DashboardController {
                 datasets: [{
                     data: data.length > 0 ? data : [1],
                     backgroundColor: data.length > 0 ? colors : ['#94a3b8'],
-                    borderWidth: 2,
-                    borderColor: borderColor,
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    spacing: 3,
                     hoverOffset: 6
                 }]
             },
             options: {
-                cutout: '72%',
+                cutout: '74%',
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 800,
+                    easing: 'easeOutQuart'
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         enabled: true,
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                        titleColor: isDark ? '#f8fafc' : '#0f172a',
+                        bodyColor: isDark ? '#cbd5e1' : '#334155',
+                        borderColor: isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(226, 232, 240, 0.9)',
+                        borderWidth: 1,
+                        padding: 10,
+                        boxPadding: 5,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        titleFont: { family: 'Inter, sans-serif', size: 12, weight: 'bold' },
+                        bodyFont: { family: 'Inter, sans-serif', size: 12 },
                         callbacks: {
                             label: (ctx) => {
                                 const val = ctx.raw || 0;
@@ -618,13 +648,13 @@ export default class DashboardController {
             $bar.addClass(theme.bar);
             $badge.addClass(theme.badge);
 
-            // Click to navigate to timeline
+            // Click to navigate to instances
             $row.on('click', () => {
                 if (item.beanName) {
                     const query = QueryParam.build({ search: item.beanName, contextId: item.contextId || '' }).toString();
-                    window.location.hash = `#/timeline?${query}`;
+                    window.location.hash = `#/instances?${query}`;
                 } else {
-                    window.location.hash = '#/timeline';
+                    window.location.hash = '#/instances';
                 }
             });
 
@@ -854,12 +884,12 @@ export default class DashboardController {
                     window.location.hash = `#/graph?${q}`;
                 });
 
-                // Inst button -> Instance Timeline page with URL params
+                // Inst button -> Bean Instances page with URL params
                 $chip.find('.btn-goto-inst').on('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     const q = QueryParam.build({ search: beanName, contextId }).toString();
-                    window.location.hash = `#/timeline?${q}`;
+                    window.location.hash = `#/instances?${q}`;
                 });
 
                 fragment.appendChild(clone);

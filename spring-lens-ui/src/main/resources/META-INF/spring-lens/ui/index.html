@@ -3,12 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Spring Lens - Beans</title>
+    <title>Spring Lens</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
     <link rel="stylesheet" href="style.css">
@@ -132,7 +134,7 @@
                                     class="material-symbols-outlined text-[17px] text-gray-400 dark:text-gray-500 group-hover:text-primary dark:group-hover:text-purple-300 group-[.text-primary]:text-primary dark:group-[.text-primary]:text-purple-300 transition-colors">list_alt</span>
                                 <span>Definitions</span>
                             </a>
-                            <a data-page="timeline" href="#/timeline"
+                            <a data-page="instances" href="#/instances"
                                 class="flex items-center gap-2.5 text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 py-2 px-2.5 rounded-lg hover:bg-gray-100/70 dark:hover:bg-slate-800/60 transition-all nav-link group">
                                 <span
                                     class="material-symbols-outlined text-[17px] text-gray-400 dark:text-gray-500 group-hover:text-primary dark:group-hover:text-purple-300 group-[.text-primary]:text-primary dark:group-[.text-primary]:text-purple-300 transition-colors">timelapse</span>
@@ -164,8 +166,10 @@
                 <div class="flex items-center gap-2 min-w-0">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
                     <div class="min-w-0">
-                        <div class="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">Service Active</div>
-                        <div class="text-[9px] text-gray-400 dark:text-gray-500 font-mono truncate">Health Status: UP</div>
+                        <div class="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">Service Active
+                        </div>
+                        <div class="text-[9px] text-gray-400 dark:text-gray-500 font-mono truncate">Health Status: UP
+                        </div>
                     </div>
                 </div>
                 <span
@@ -181,6 +185,49 @@
     </main>
 
     <!-- Global App Templates -->
+    <template id="tpl-page-header">
+        <header
+            class="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 sm:px-8 py-4 flex items-center justify-between z-10 flex-shrink-0 h-[72px] transition-colors duration-300">
+            <div class="flex items-center gap-3 min-w-0">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-purple-500/10 to-indigo-500/20 text-primary dark:text-purple-300 flex items-center justify-center border border-primary/20 shadow-xs flex-shrink-0"
+                    data-header-field="iconContainer">
+                    <span class="material-symbols-outlined text-[22px]" data-header-field="icon">widgets</span>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight truncate"
+                            data-header-field="title">Page Title</h1>
+                        <span
+                            class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-primary border border-primary/20 dark:bg-purple-950/40 dark:text-purple-300 flex-shrink-0 hidden"
+                            data-header-field="badge"></span>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1 truncate"
+                        data-header-field="breadcrumbs">
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2.5 flex-shrink-0" data-header-field="actions">
+                <!-- Action items populated dynamically -->
+            </div>
+        </header>
+    </template>
+
+    <template id="tpl-page-header-btn">
+        <button
+            class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/80 hover:border-gray-300 dark:hover:border-slate-600 shadow-xs transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-[16px] text-gray-500 dark:text-gray-400" data-btn-field="icon"></span>
+            <span data-btn-field="label"></span>
+        </button>
+    </template>
+
+    <template id="tpl-page-header-search">
+        <div class="relative flex items-center">
+            <span class="material-symbols-outlined absolute left-3 text-gray-400 dark:text-gray-500 text-[18px]">search</span>
+            <input type="text"
+                class="pl-9 pr-4 py-1.5 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all w-64 shadow-xs" />
+        </div>
+    </template>
     <template id="tpl-status-connected">
         <div
             class="p-3 rounded-xl bg-white dark:bg-slate-800/60 border border-gray-200/80 dark:border-slate-700/60 shadow-xs flex items-center justify-between transition-colors">
@@ -203,7 +250,8 @@
                 <span class="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></span>
                 <div class="min-w-0">
                     <div class="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">Service Inactive</div>
-                    <div class="text-[9px] text-gray-400 dark:text-gray-500 font-mono truncate">Health Status: DOWN</div>
+                    <div class="text-[9px] text-gray-400 dark:text-gray-500 font-mono truncate">Health Status: DOWN
+                    </div>
                 </div>
             </div>
             <span
@@ -325,148 +373,185 @@
 
     <!-- Global Bean Details Sidebar Template -->
     <template id="tpl-bean-details-sidebar">
-        <div class="flex flex-col h-full w-[360px]">
+        <div class="flex flex-col h-full w-full min-w-0">
             <!-- Header -->
             <div
-                class="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/40 dark:bg-slate-800/20">
-                <div class="flex items-center gap-2">
-                    <h3 class="font-bold text-sm text-gray-800 dark:text-white">Bean Details</h3>
-                    <span
-                        class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-primary border border-primary/20 dark:bg-purple-950/40 dark:text-purple-300">Inspector</span>
+                class="px-4 py-3.5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-purple-50/60 via-indigo-50/30 to-transparent dark:from-purple-950/20 dark:via-slate-900/40 dark:to-transparent flex-shrink-0">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div
+                        class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 via-purple-500/15 to-transparent text-primary dark:text-purple-300 flex items-center justify-center ring-1 ring-primary/25 shadow-2xs flex-shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">manage_search</span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h3 class="font-black text-xs text-gray-900 dark:text-white uppercase tracking-wider truncate">Bean Inspector</h3>
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-50 text-primary border border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active
+                            </span>
+                        </div>
+                        <p class="text-[10.5px] text-gray-400 dark:text-gray-500 font-medium truncate">Definition & Metadata Explorer</p>
+                    </div>
                 </div>
                 <button data-action="close-sidebar"
-                    class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer group flex-shrink-0"
                     id="btn-close-sidebar" title="Close sidebar">
-                    <span class="material-symbols-outlined text-[18px]">close</span>
+                    <span class="material-symbols-outlined text-[18px] group-hover:rotate-90 transition-transform duration-200">close</span>
                 </button>
             </div>
 
-            <!-- Hero Section: Dynamic Icon Box, Name, Type, 2-Column Stats -->
-            <div class="p-5 pb-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-800/10">
-                <div class="flex items-start gap-3 mb-3.5">
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200/60 dark:border-amber-900/40 shadow-xs flex-shrink-0 mt-0.5"
+            <!-- Hero Identity Card: Dynamic Icon Box, Name, Type, Metagrid -->
+            <div class="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/40 dark:bg-slate-900/40 space-y-3 flex-shrink-0">
+                <!-- Identity Header -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-primary dark:text-purple-300 flex items-center justify-center border border-primary/25 shadow-2xs flex-shrink-0"
                         id="sidebar-icon-container">
                         <span class="material-symbols-outlined text-[20px]" id="sidebar-icon">schema</span>
                     </div>
-                    <div class="min-w-0 flex-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
-                        <div class="font-bold text-xs text-gray-800 dark:text-gray-100 break-words leading-tight"
-                            id="detail-bean-name">-
-                        </div>
-                        <div class="text-[11px] text-gray-500 dark:text-gray-400 font-mono break-all leading-normal mt-1"
-                            id="detail-bean-type">-</div>
+                    <div class="min-w-0 flex-1">
+                        <div class="font-mono font-bold text-[13px] text-gray-900 dark:text-white truncate leading-tight hover:text-primary transition-colors cursor-pointer select-all"
+                            id="detail-bean-name" title="Click to copy name">-</div>
+                        <div class="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate mt-0.5"
+                            id="detail-bean-type" title="">-</div>
                     </div>
                 </div>
 
-                <div
-                    class="grid grid-cols-2 gap-2 bg-white dark:bg-slate-900 p-3 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs">
-                    <div>
-                        <div
-                            class="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-0.5">
-                            Scope</div>
-                        <div class="text-xs font-mono font-bold text-gray-800 dark:text-gray-100 truncate"
-                            id="detail-bean-scope">
-                            -
+                <!-- Structured Metagrid: 2 Columns for Scope/Role + Full Width for Context -->
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Scope -->
+                        <div class="bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-2xs">
+                            <div class="flex items-center gap-1 text-gray-400 dark:text-gray-500 mb-0.5">
+                                <span class="material-symbols-outlined text-[13px]">pie_chart</span>
+                                <span class="text-[9.5px] font-bold uppercase tracking-wider">Scope</span>
+                            </div>
+                            <div class="text-[11.5px] font-mono font-bold text-purple-600 dark:text-purple-300 truncate"
+                                id="detail-bean-scope">-</div>
+                        </div>
+                        <!-- Role -->
+                        <div class="bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-2xs">
+                            <div class="flex items-center gap-1 text-gray-400 dark:text-gray-500 mb-0.5">
+                                <span class="material-symbols-outlined text-[13px]">shield</span>
+                                <span class="text-[9.5px] font-bold uppercase tracking-wider">Role</span>
+                            </div>
+                            <div class="text-[11.5px] font-mono font-bold text-blue-600 dark:text-blue-300 truncate"
+                                id="detail-bean-role">Application</div>
                         </div>
                     </div>
-                    <div>
-                        <div
-                            class="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-0.5">
-                            Role</div>
-                        <div class="text-xs font-mono font-bold text-gray-800 dark:text-gray-100 truncate"
-                            id="detail-bean-role">
-                            Application
+
+                    <!-- Context ID (Full Width) -->
+                    <div class="bg-white dark:bg-slate-950 px-3 py-2 rounded-xl border border-gray-100 dark:border-slate-800 shadow-2xs flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1 text-gray-400 dark:text-gray-500 flex-shrink-0">
+                            <span class="material-symbols-outlined text-[13px]">hub</span>
+                            <span class="text-[9.5px] font-bold uppercase tracking-wider">Context</span>
                         </div>
+                        <div class="text-[11.5px] font-mono font-bold text-emerald-600 dark:text-emerald-300 truncate text-right"
+                            id="detail-prop-context">-</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sidebar Tabs -->
-            <div class="flex border-b border-gray-100 dark:border-slate-800 px-2 bg-gray-50/20 dark:bg-slate-900/20"
-                id="sidebar-tabs">
-                <button data-action="switch-tab"
-                    class="flex-1 py-2.5 text-xs font-bold text-primary dark:text-purple-400 border-b-2 border-primary text-center tab-btn cursor-pointer"
-                    data-tab="properties" id="tab-properties">Properties</button>
-                <button data-action="switch-tab"
-                    class="flex-1 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-center tab-btn cursor-pointer"
-                    data-tab="dependencies" id="tab-dependencies">Dependencies (<span
-                        id="detail-deps-count">0</span>)</button>
-                <button data-action="switch-tab"
-                    class="flex-1 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-center tab-btn cursor-pointer"
-                    data-tab="dependents" id="tab-dependents">Dependents (<span
-                        id="detail-dependents-count">0</span>)</button>
+            <!-- Segmented Modern Tabs -->
+            <div class="px-4 py-2.5 border-b border-gray-100 dark:border-slate-800 flex-shrink-0">
+                <div class="flex items-center bg-gray-100/90 dark:bg-slate-950/80 p-1 rounded-xl border border-gray-200/60 dark:border-slate-800"
+                    id="sidebar-tabs">
+                    <button data-action="switch-tab"
+                        class="flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all tab-btn cursor-pointer flex items-center justify-center gap-1 bg-white dark:bg-slate-800 text-primary dark:text-purple-300 shadow-xs"
+                        data-tab="properties" id="tab-properties">
+                        <span class="material-symbols-outlined text-[14px]">tune</span> Properties
+                    </button>
+                    <button data-action="switch-tab"
+                        class="flex-1 py-1.5 px-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg transition-all tab-btn cursor-pointer flex items-center justify-center gap-1"
+                        data-tab="dependencies" id="tab-dependencies">
+                        <span>Deps</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono bg-purple-100 text-primary dark:bg-purple-950 dark:text-purple-300"
+                            id="detail-deps-count">0</span>
+                    </button>
+                    <button data-action="switch-tab"
+                        class="flex-1 py-1.5 px-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg transition-all tab-btn cursor-pointer flex items-center justify-center gap-1"
+                        data-tab="dependents" id="tab-dependents">
+                        <span>Dependent</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                            id="detail-dependents-count">0</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Scrollable Content Area -->
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4" id="sidebar-content">
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3.5" id=\"sidebar-content\">
                 <!-- Tab Pane: Properties -->
                 <div id="pane-properties" class="tab-pane space-y-3.5">
-                    <!-- Basic Info Section -->
+                    <!-- Traits & Flags Grid -->
                     <div
-                        class="p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
-                        <h4 class="text-[11px] font-bold text-gray-800 dark:text-white uppercase tracking-wider">Basic
-                            Info</h4>
+                        class="p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[13px] text-amber-500">toggle_on</span> Flags & Traits
+                            </h4>
+                            <span class="text-[10px] font-mono text-gray-400">Spring DI</span>
+                        </div>
                         <div class="space-y-2 text-xs">
-                            <div class="flex justify-between items-center py-0.5">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Primary Bean</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200 font-mono text-[11px]"
+                            <div class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[15px] text-amber-500">star</span> Primary Bean
+                                </span>
+                                <span class="font-bold text-[10px] font-mono px-2 py-0.5 rounded-md"
                                     id="detail-prop-primary">FALSE</span>
                             </div>
-                            <div class="flex justify-between items-center py-0.5">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Lazy Initialized</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200 font-mono text-[11px]"
+                            <div class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[15px] text-purple-500">bedtime</span> Lazy Initialized
+                                </span>
+                                <span class="font-bold text-[10px] font-mono px-2 py-0.5 rounded-md"
                                     id="detail-prop-lazy">FALSE</span>
                             </div>
-                            <div class="flex justify-between items-center py-0.5">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Autowired Candidate</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200 font-mono text-[11px]"
+                            <div class="flex justify-between items-center py-1.5 px-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-gray-600 dark:text-gray-300 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[15px] text-emerald-500">check_circle</span> Autowired Candidate
+                                </span>
+                                <span class="font-bold text-[10px] font-mono px-2 py-0.5 rounded-md"
                                     id="detail-prop-autowired">TRUE</span>
-                            </div>
-                            <div class="flex justify-between items-center py-0.5">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Context ID</span>
-                                <span
-                                    class="font-bold text-gray-800 dark:text-gray-200 font-mono text-[11px] truncate max-w-[160px]"
-                                    id="detail-prop-context">-</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Factory Details Section -->
                     <div
-                        class="p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
-                        <h4 class="text-[11px] font-bold text-gray-800 dark:text-white uppercase tracking-wider">Factory
-                            Details</h4>
+                        class="p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5">
+                        <h4 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px] text-blue-500">factory</span> Factory Provider
+                        </h4>
                         <div class="space-y-2 text-xs">
-                            <div>
-                                <span
-                                    class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block mb-0.5">Factory
-                                    Bean</span>
-                                <span
-                                    class="text-[11px] font-mono font-medium text-gray-800 dark:text-gray-200 break-all leading-normal"
+                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-[9.5px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block mb-0.5">Factory Bean</span>
+                                <span class="text-[11px] font-mono font-medium text-gray-800 dark:text-gray-200 break-all leading-normal block"
                                     id="detail-factory-bean">-</span>
                             </div>
-                            <div class="pt-1.5 border-t border-gray-100 dark:border-slate-800">
-                                <span
-                                    class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block mb-0.5">Factory
-                                    Method</span>
-                                <span class="text-xs font-mono font-bold text-gray-800 dark:text-gray-200 break-all"
+                            <div class="p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-[9.5px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider block mb-0.5">Factory Method</span>
+                                <span class="text-[11px] font-mono font-bold text-primary dark:text-purple-300 break-all leading-normal block"
                                     id="detail-factory-method">-</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Lifecycle Section -->
+                    <!-- Lifecycle Hooks Section -->
                     <div
-                        class="p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
-                        <h4 class="text-[11px] font-bold text-gray-800 dark:text-white uppercase tracking-wider">
-                            Lifecycle</h4>
+                        class="p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5">
+                        <h4 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px] text-rose-500">cyclone</span> Lifecycle Callbacks
+                        </h4>
                         <div class="space-y-2 text-xs">
-                            <div class="flex justify-between items-center py-0.5">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Init Method</span>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-emerald-500">play_arrow</span> Init Method
+                                </span>
                                 <span class="font-bold text-gray-800 dark:text-gray-200 font-mono text-[11px]"
                                     id="detail-init-method">-</span>
                             </div>
-                            <div class="flex justify-between items-center py-0.5">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Destroy Method</span>
+                            <div class="flex justify-between items-center p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-950/60 border border-gray-100 dark:border-slate-800/60">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-rose-500">stop</span> Destroy Method
+                                </span>
                                 <span class="font-bold text-gray-800 dark:text-gray-200 font-mono text-[11px]"
                                     id="detail-destroy-method">-</span>
                             </div>

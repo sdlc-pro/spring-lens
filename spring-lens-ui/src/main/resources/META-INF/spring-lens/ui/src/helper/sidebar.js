@@ -1,8 +1,8 @@
 import TemplateEngine from './template-engine.js';
 import { DEPENDENCY_CATEGORY_COLORS } from './constants.js';
 import { capitalize, getBeanCategory, resolveBeanMetadata } from './utils.js';
-import GraphTreeBuilder from '../builder/graph-tree-builder.js';
-import beanDataStore from '../storage/bean-data-store.js';
+import GraphTreeBuilder from './graph-tree-builder.js';
+import beanDataStore from './bean-data-store.js';
 
 export const DEFAULT_SIDEBAR_SELECTORS = {
     beanName: '#detail-bean-name',
@@ -37,6 +37,18 @@ export default class Sidebar {
             $el.text(details[field]);
             if (field === 'beanName' || field === 'type') {
                 $el.attr('title', details[field]);
+            }
+
+            // Enhanced styling for boolean traits
+            if (field === 'primary' || field === 'lazyInit' || field === 'autowired') {
+                const isTrue = details[field] === 'TRUE';
+                if (isTrue) {
+                    $el.removeClass('bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-gray-400')
+                       .addClass('bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/50');
+                } else {
+                    $el.removeClass('bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/50')
+                       .addClass('bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-gray-400 border border-transparent');
+                }
             }
         });
     }
@@ -158,8 +170,8 @@ export default class Sidebar {
             tabIdPrefix = 'tab-',
             paneSelector = '.tab-pane',
             paneIdPrefix = 'pane-',
-            activeClasses = 'text-primary dark:text-purple-400 border-b-2 border-primary font-bold',
-            inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium'
+            activeClasses = 'bg-white dark:bg-slate-800 text-primary dark:text-purple-300 shadow-xs font-bold',
+            inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium'
         } = config;
 
         $(tabSelector).each((_, element) => {

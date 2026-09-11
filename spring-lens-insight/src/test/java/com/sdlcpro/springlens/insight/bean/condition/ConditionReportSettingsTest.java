@@ -14,7 +14,7 @@ class ConditionReportSettingsTest {
     void mutatingSourceSetAfterConstructionDoesNotAffectRecord() {
         Set<String> packages = new HashSet<>(Set.of("com.example.internal"));
 
-        ConditionReportSettings settings = new ConditionReportSettings(true, packages);
+        ConditionReportSettings settings = new ConditionReportSettings(true, packages, false);
 
         packages.add("com.example.injected");
 
@@ -24,7 +24,7 @@ class ConditionReportSettingsTest {
 
     @Test
     void internalSetsAreImmutable() {
-        ConditionReportSettings settings = new ConditionReportSettings(true, Set.of("com.example"));
+        ConditionReportSettings settings = new ConditionReportSettings(true, Set.of("com.example"), false);
 
         assertThatThrownBy(() -> settings.excludePackagePatterns().add("com.example.new"))
                 .isInstanceOf(UnsupportedOperationException.class);
@@ -32,15 +32,15 @@ class ConditionReportSettingsTest {
 
     @Test
     void nullSetIsNormalizedToEmptySet() {
-        ConditionReportSettings settings = new ConditionReportSettings(false, null);
+        ConditionReportSettings settings = new ConditionReportSettings(false, null, false);
 
         assertThat(settings.excludePackagePatterns()).isNotNull().isEmpty();
     }
 
     @Test
     void booleanFlagsAreStoredAsIs() {
-        ConditionReportSettings settingsTrue = new ConditionReportSettings(true, Set.of());
-        ConditionReportSettings settingsFalse = new ConditionReportSettings(false, Set.of());
+        ConditionReportSettings settingsTrue = new ConditionReportSettings(true, Set.of(), false);
+        ConditionReportSettings settingsFalse = new ConditionReportSettings(false, Set.of(), false);
 
         assertThat(settingsTrue.includeToolInternal()).isTrue();
         assertThat(settingsFalse.includeToolInternal()).isFalse();
@@ -48,8 +48,8 @@ class ConditionReportSettingsTest {
 
     @Test
     void equalsAndHashCodeWorkAsValueObject() {
-        ConditionReportSettings a = new ConditionReportSettings(true, Set.of("p1"));
-        ConditionReportSettings b = new ConditionReportSettings(true, Set.of("p1"));
+        ConditionReportSettings a = new ConditionReportSettings(true, Set.of("p1"), false);
+        ConditionReportSettings b = new ConditionReportSettings(true, Set.of("p1"), false);
 
         assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
     }
