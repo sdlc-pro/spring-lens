@@ -1,6 +1,7 @@
 package com.sdlcpro.springlens.insight.bean.condition;
 
 import com.sdlcpro.springlens.annotation.SpringLensInternalComponent;
+import com.sdlcpro.springlens.constant.SpringFrameworkModule;
 import com.sdlcpro.springlens.insight.support.matcher.PackageMatcher;
 import com.sdlcpro.springlens.insight.util.SafeListenerInvoker;
 import com.sdlcpro.springlens.listener.bean.ConditionEvaluationInfoCollectListener;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +47,16 @@ public class ConditionEvaluationInfoCollector implements SmartInitializingSingle
         matcher.addExcludeMatcher(new PackageMatcher<>(settings.excludePackagePatterns()));
         if (!settings.includeToolInternal()) {
             matcher.addExcludeMatcher(new PackageMatcher<>(Set.of(SPRING_LENS_BASE_PACKAGE_PATTERN)));
+        }
+
+        if (settings.excludeFrameworkInternal()) {
+            var excludePackagePatterns = new LinkedHashSet<String>();
+            var modules = SpringFrameworkModule.modules();
+            for (SpringFrameworkModule module : modules) {
+                excludePackagePatterns.add(module.getPackagePattern());
+            }
+
+            matcher.addExcludeMatcher(new PackageMatcher<>(excludePackagePatterns));
         }
 
         return matcher;
