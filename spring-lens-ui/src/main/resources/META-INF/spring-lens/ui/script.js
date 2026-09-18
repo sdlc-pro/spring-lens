@@ -18,27 +18,22 @@ $(document).ready(() => {
     // 2. Bean Ecosystem Routes
     Route.get('/definitions', [DefinitionController, 'index'])
         .view('bean/definitions')
-        .header(null)
         .name('definitions');
 
     Route.get('/conditions', [ConditionalReportController, 'index'])
         .view('bean/condition-reports')
-        .header(null)
         .name('conditions');
 
     Route.get('/instances', [InstanceController, 'index'])
         .view('bean/instances')
-        .header(null)
         .name('instances');
 
     Route.get('/graph', [DependencyGraphController, 'index'])
         .view('bean/graph')
-        .header(null)
         .name('graph');
 
     Route.get('/whats-new', [WhatsNewController, 'index'])
         .view('whats-new/whats-new')
-        .header(null)
         .name('whats-new');
 
     // 3. Backward Compatibility Redirects

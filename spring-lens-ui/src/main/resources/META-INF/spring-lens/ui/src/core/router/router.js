@@ -1,16 +1,9 @@
 import TemplateEngine from '../../helper/template-engine.js';
-import PageHeader from '../../helper/page-header.js';
 import { NAV_STYLES } from '../../helper/constants.js';
-import PAGE_HEADERS from '../../config/page-headers.js';
 import RouteDefinition from './route-definition.js';
 import Pipeline from './pipeline.js';
 import container from '../container.js';
 
-/**
- * Core Router Engine.
- * Handles hash navigation, route resolution, controller dispatch,
- * middleware pipelines, and view rendering.
- */
 export default class Router {
 
     constructor(config = {}) {
@@ -24,13 +17,12 @@ export default class Router {
         this.activeRoute = null;
         this.activeController = null;
 
-        this.pagesDir = config.pagesDir ?? './src/views/';
-        this.containerSelector = config.container ?? '#main-content';
-        this.defaultRoute = config.defaultRoute ?? 'dashboard';
         this.appTitle = config.appTitle ?? 'Spring Lens';
+        this.pagesDir = config.pagesDir ?? './src/views/';
         this.titleSeparator = config.titleSeparator ?? ' | ';
+        this.defaultRoute = config.defaultRoute ?? 'dashboard';
+        this.containerSelector = config.container ?? '#main-content';
 
-        // Support passing legacy routes object in constructor
         if (config.routes) {
             this._registerLegacyRoutes(config.routes);
         }
@@ -40,12 +32,7 @@ export default class Router {
         return $(this.containerSelector);
     }
 
-    /**
-     * Initializes the router, binds event listeners, and resolves the initial route.
-     * @param {Object} [config={}]
-     */
     init(config = {}) {
-        // Auto-boot IoC container & background services
         container.boot();
 
         if (config.container) this.containerSelector = config.container;
@@ -60,17 +47,12 @@ export default class Router {
         this.resolve().catch((error) => console.error('Initial route resolution failed:', error));
     }
 
-    /**
-     * Registers a GET route with a path and controller action or callback.
-     * @param {string} path - Route URI pattern (e.g. 'dashboard', 'bean/definitions')
-     * @param {Array|Object|Function|null} [action=null] - [Controller, 'actionName'], controller instance, or callback
-     * @returns {RouteDefinition}
-     */
     get(path, action = null) {
         const fullPath = this._applyGroupPrefix(path);
-        const route = new RouteDefinition(fullPath, action);
+        const route = new RouteDefinition(fullPath, action, (name, r) => {
+            this.namedRoutes.set(name, r);
+        });
 
-        // Apply any active group middlewares
         const groupMiddlewares = this._getActiveGroupMiddlewares();
         if (groupMiddlewares.length > 0) {
             route.middleware(groupMiddlewares);
@@ -78,48 +60,21 @@ export default class Router {
 
         this.routes.set(route.path, route);
 
-        // Auto-register discovered routeName into namedRoutes
         if (route.routeName) {
             this.namedRoutes.set(route.routeName, route);
         }
 
-        // Enable proxying of route.name() calls to register into this.namedRoutes
-        const originalName = route.name.bind(route);
-        route.name = (name) => {
-            originalName(name);
-            this.namedRoutes.set(name, route);
-            return route;
-        };
-
         return route;
     }
 
-    /**
-     * Shorthand to register a direct view route.
-     * @param {string} path
-     * @param {string} templatePath
-     * @returns {RouteDefinition}
-     */
     view(path, templatePath) {
         return this.get(path).view(templatePath);
     }
 
-    /**
-     * Shorthand to register a route redirect.
-     * @param {string} fromPath
-     * @param {string} toPath
-     * @returns {RouteDefinition}
-     */
     redirect(fromPath, toPath) {
         return this.get(fromPath).redirectTo(toPath);
     }
 
-    /**
-     * Creates a route group sharing attributes (prefix, middleware).
-     * @param {Object} options - { prefix?: string, middleware?: Function|Function[] }
-     * @param {Function} callback - Group definition callback receiving router instance
-     * @returns {Router}
-     */
     group(options, callback) {
         this._groupStack.push(options);
         try {
@@ -130,43 +85,23 @@ export default class Router {
         return this;
     }
 
-    /**
-     * Creates a route group with a shared prefix.
-     * @param {string} prefix
-     * @returns {{group: Function}}
-     */
     prefix(prefix) {
         return {
             group: (callback) => this.group({ prefix }, callback)
         };
     }
 
-    /**
-     * Creates a route group with shared middlewares.
-     * @param {...Function} middlewares
-     * @returns {{group: Function}}
-     */
     middleware(...middlewares) {
         return {
             group: (callback) => this.group({ middleware: middlewares.flat() }, callback)
         };
     }
 
-    /**
-     * Registers a global middleware executed on every route transition.
-     * @param {...Function} middlewares
-     * @returns {Router}
-     */
     use(...middlewares) {
         this.globalMiddlewares.push(...middlewares.flat().filter(Boolean));
         return this;
     }
 
-    /**
-     * Programmatic navigation.
-     * @param {string} path - Target path or route name
-     * @param {Object} [queryParams=null]
-     */
     navigate(path, queryParams = null) {
         const targetRoute = this.namedRoutes.get(path);
         const resolvedPath = targetRoute ? targetRoute.path : this._normalizePath(path);
@@ -180,245 +115,223 @@ export default class Router {
 
         const targetHash = `#/${resolvedPath}${query}`;
         if (window.location.hash === targetHash) {
-            this.resolve();
+            this.resolve().catch((error) => console.error('Route resolution failed:', error));
         } else {
             window.location.hash = targetHash;
         }
     }
 
-    /**
-     * Resolves and renders the route matching current window.location.hash.
-     */
     async resolve() {
-        const rawHash = window.location.hash.replace(/^#\/?/, '') || this.defaultRoute;
-        const [rawPath, queryString] = rawHash.split('?');
-        const path = this._normalizePath(rawPath) || this.defaultRoute;
-        const params = new URLSearchParams(queryString || '');
+        const { path, queryString, params } = this._parseLocationHash();
+        const route = this._findRoute(path);
 
-        let route = this.routes.get(path);
-
-        // Fallback matching: try suffix or defaultRoute
         if (!route) {
-            for (const [routePath, def] of this.routes.entries()) {
-                if (routePath.endsWith(path) || path.endsWith(routePath)) {
-                    route = def;
-                    break;
-                }
+            this._handleMissingRoute(path);
+            return;
+        }
+
+        if (route.redirectTarget) {
+            this._handleRedirect(route.redirectTarget, queryString);
+            return;
+        }
+
+        const context = { path, params, queryString, route, router: this };
+        await this._runPipeline(context);
+    }
+
+    _parseLocationHash() {
+        const rawHash = window.location.hash.replace(/^#\/?/, '') || this.defaultRoute;
+        const [rawPath, queryString = ''] = rawHash.split('?');
+        const path = this._normalizePath(rawPath) || this.defaultRoute;
+        const params = new URLSearchParams(queryString);
+
+        return { path, queryString, params };
+    }
+
+    _findRoute(path) {
+        if (this.routes.has(path)) {
+            return this.routes.get(path);
+        }
+
+        for (const [routePath, def] of this.routes.entries()) {
+            if (this._isRouteMatch(routePath, path)) {
+                return def;
             }
         }
 
-        if (!route) {
-            console.warn(`Route not found for path: "${path}". Redirecting to default: ${this.defaultRoute}`);
-            window.location.hash = `#/${this.defaultRoute}`;
-            return;
-        }
-
-        // Handle Redirects
-        if (route.redirectTarget) {
-            const query = queryString ? `?${queryString}` : '';
-            window.location.hash = `#/${route.redirectTarget}${query}`;
-            return;
-        }
-
-        // Create routing context
-        const context = {
-            path,
-            params,
-            queryString,
-            route,
-            router: this
-        };
-
-        // Execute Middleware Pipeline
-        const pipeline = new Pipeline([...this.globalMiddlewares, ...route.middlewares]);
-        await pipeline.run(context, async (ctx) => {
-            await this._dispatchRoute(ctx);
-        });
+        return null;
     }
 
-    /**
-     * Dispatches view rendering and controller execution for a resolved route.
-     * @private
-     */
+    _isRouteMatch(routePath, targetPath) {
+        if (routePath === targetPath) return true;
+        return routePath.endsWith(`/${targetPath}`) || targetPath.endsWith(`/${routePath}`);
+    }
+
+    _handleMissingRoute(path) {
+        console.warn(`Route not found for path: "${path}". Redirecting to default: ${this.defaultRoute}`);
+        window.location.hash = `#/${this.defaultRoute}`;
+    }
+
+    _handleRedirect(target, queryString) {
+        const query = queryString ? `?${queryString}` : '';
+        window.location.hash = `#/${target}${query}`;
+    }
+
+    async _runPipeline(context) {
+        return new Pipeline(this.globalMiddlewares, context.route.middlewares)
+            .send(context)
+            .thenRun(ctx => this._dispatchRoute(ctx));
+    }
+
     async _dispatchRoute(context) {
         const { route, path, params } = context;
         const isSameRoute = this.activeRouteKey === path;
 
-        // 1. Teardown previous controller & Alpine component tree
-        if (this.activeRouteKey && !isSameRoute) {
-            if (typeof window !== 'undefined' && window.Alpine?.destroyTree && this.container?.[0]) {
-                try {
-                    window.Alpine.destroyTree(this.container[0]);
-                } catch (e) {
-                    console.warn('Alpine destroyTree warning:', e);
-                }
-            }
-
-            if (this.activeController && typeof this.activeController.leave === 'function') {
-                try {
-                    this.activeController.leave();
-                } catch (error) {
-                    console.error(`Error executing leave() on controller:`, error);
-                }
-            }
-            if (typeof window !== 'undefined' && window.__activeController === this.activeController) {
-                window.__activeController = null;
-            }
-            if (this.activeRoute?.customOnLeave) {
-                try {
-                    this.activeRoute.customOnLeave();
-                } catch (error) {
-                    console.error(`Error executing custom onLeave hook:`, error);
-                }
-            }
+        if (!isSameRoute) {
+            this._teardownActiveRoute();
         }
 
         const controller = this._resolveController(route.targetController);
+        this._setActiveRouteState(path, route, controller);
 
+        if (!isSameRoute || !this.container.children().length) {
+            const rendered = await this._renderView(route, controller);
+            if (!rendered) return;
+        }
+
+        await this._invokeController(controller, route, context);
+        this._finalizeNavigation(route, controller);
+    }
+
+    _teardownActiveRoute() {
+        if (!this.activeRouteKey) return;
+
+        const teardownTasks = [
+            () => this.container?.[0] && window?.Alpine?.destroyTree?.(this.container[0]),
+            () => this.activeController?.leave?.(),
+            () => this._clearGlobalControllerRef(),
+            () => this.activeRoute?.customOnLeave?.()
+        ];
+
+        teardownTasks.forEach((task) => this._safeExecute(task, 'Teardown execution failed:'));
+    }
+
+    _clearGlobalControllerRef() {
+        if (typeof window !== 'undefined' && window.__activeController === this.activeController) {
+            window.__activeController = null;
+        }
+    }
+
+    _safeExecute(action, contextMessage = 'Execution warning:') {
+        try {
+            action();
+        } catch (error) {
+            console.warn(contextMessage, error);
+        }
+    }
+
+    _setActiveRouteState(path, route, controller) {
         this.activeRouteKey = path;
         this.activeRoute = route;
         this.activeController = controller;
         if (typeof window !== 'undefined') {
             window.__activeController = controller;
         }
-
-        // 2. Render View & Header if route changed or container is empty
-        if (!isSameRoute || !this.container.children().length) {
-            const loadingClone = TemplateEngine.clone('tpl-app-loading');
-            if (loadingClone) {
-                this.container.empty().append(loadingClone);
-            }
-
-            try {
-                if (route.template) {
-                    const html = await this._loadTemplate(route.template);
-                    this.container.empty();
-
-                    // Resolve & Render PageHeader
-                    const headerConfig = this._resolveHeader(route, controller, params);
-                    if (headerConfig) {
-                        const headerNode = PageHeader.render(headerConfig);
-                        if (headerNode) {
-                            this.container.append(headerNode);
-                        }
-                    }
-
-                    this.container.append(html);
-
-                    const wireAlpine = () => {
-                        if (typeof window === 'undefined' || !this.container?.[0] || !controller) return;
-                        try {
-                            if (window.Alpine?.initTree) {
-                                window.Alpine.initTree(this.container[0]);
-                            }
-                            const alpineRoot = this.container[0].querySelector('[x-data]');
-                            if (alpineRoot && window.Alpine?.$data) {
-                                const alpineData = window.Alpine.$data(alpineRoot);
-                                if (typeof controller.bindAlpine === 'function') {
-                                    controller.bindAlpine(alpineData);
-                                } else if (typeof controller.bindalpine === 'function') {
-                                    controller.bindalpine(alpineData);
-                                } else {
-                                    controller.alpine = alpineData;
-                                }
-                            }
-                        } catch (e) {
-                            console.warn('Alpine auto-wire warning:', e);
-                        }
-                    };
-
-                    if (typeof window !== 'undefined' && window.Alpine?.$data) {
-                        wireAlpine();
-                    } else if (typeof window !== 'undefined') {
-                        document.addEventListener('alpine:init', wireAlpine, { once: true });
-                        document.addEventListener('alpine:initialized', wireAlpine, { once: true });
-                    }
-                }
-            } catch (error) {
-                console.error(`Routing error loading template for "${path}":`, error);
-                this._renderError(error.message);
-                return;
-            }
-        }
-
-        // 3. Dispatch Controller Action & Custom Hooks (support both index and enter)
-        try {
-            const targetAction = route.targetAction || 'enter';
-            const actionMethod = (controller && typeof controller[targetAction] === 'function')
-                ? targetAction
-                : (targetAction === 'index' && typeof controller?.enter === 'function')
-                    ? 'enter'
-                    : (targetAction === 'enter' && typeof controller?.index === 'function')
-                        ? 'index'
-                        : targetAction;
-
-            if (controller && typeof controller[actionMethod] === 'function') {
-                await controller[actionMethod](params, context);
-            }
-            if (route.customOnEnter) {
-                await route.customOnEnter(params, context);
-            }
-        } catch (error) {
-            console.error(`Error executing controller action for route "${path}":`, error);
-        }
-
-        // 4. Update Navigation Visuals & Document Title
-        this.updateSidebarVisuals(path);
-        const resolvedHeader = this._resolveHeader(route, controller, params);
-        this._updateDocumentTitle(route, resolvedHeader);
     }
 
-    /**
-     * Resolves a controller instance using the IoC container.
-     * @private
-     */
+    async _renderView(route, controller) {
+        if (!route.template) return true;
+
+        this._showLoadingIndicator();
+
+        try {
+            const html = await this._loadTemplate(route.template);
+            this.container.empty().append(html);
+            this._bindAlpineToController(controller);
+            return true;
+        } catch (error) {
+            console.error(`Routing error loading template for "${this.activeRouteKey}":`, error);
+            this._renderError(error.message);
+            return false;
+        }
+    }
+
+    _showLoadingIndicator() {
+        const loadingClone = TemplateEngine.clone('tpl-app-loading');
+        if (loadingClone) {
+            this.container.empty().append(loadingClone);
+        }
+    }
+
+    _bindAlpineToController(controller) {
+        const containerElement = this.container?.[0];
+        if (!containerElement || !controller || typeof window === 'undefined') return;
+
+        this._whenAlpineReady(() => {
+            this._safeExecute(() => {
+                window.Alpine?.initTree?.(containerElement);
+
+                const alpineRoot = containerElement.querySelector('[x-data]');
+                const alpineData = alpineRoot && window.Alpine?.$data?.(alpineRoot);
+
+                if (alpineData) {
+                    this._attachAlpineToController(controller, alpineData);
+                }
+            }, 'Alpine auto-wire warning:');
+        });
+    }
+
+    _attachAlpineToController(controller, alpineData) {
+        if (typeof controller.bindAlpine === 'function') {
+            controller.bindAlpine(alpineData);
+        } else {
+            controller.alpine = alpineData;
+        }
+    }
+
+    _whenAlpineReady(callback) {
+        if (window.Alpine?.$data) {
+            callback();
+            return;
+        }
+        document.addEventListener('alpine:initialized', callback, { once: true });
+    }
+
+    async _invokeController(controller, route, context) {
+        if (!controller) return;
+
+        const actionMethod = this._resolveActionMethod(controller, route.targetAction);
+        try {
+            if (actionMethod) {
+                await controller[actionMethod](context.params, context);
+            }
+            if (route.customOnEnter) {
+                await route.customOnEnter(context.params, context);
+            }
+        } catch (error) {
+            console.error(`Error executing controller action for route "${context.path}":`, error);
+        }
+    }
+
+    _resolveActionMethod(controller, targetAction = 'enter') {
+        const preferred = targetAction;
+        const fallback = preferred === 'index' ? 'enter' : 'index';
+        const candidates = [preferred, fallback];
+        return candidates.find((method) => typeof controller?.[method] === 'function') || null;
+    }
+
+    _finalizeNavigation(route, controller) {
+        this.updateSidebarVisuals(this.activeRouteKey);
+        this._updateDocumentTitle(route, controller);
+    }
+
     _resolveController(targetController) {
         if (!targetController) return null;
         return container.make(targetController);
     }
 
-    /**
-     * Resolves the header configuration via multi-tier fallback:
-     * 1. Explicit RouteDefinition override (.header(...))
-     * 2. Controller-provided dynamic header (controller.getHeader?.(params) || controller.header)
-     * 3. PAGE_HEADERS registry by route name or route path
-     * @private
-     */
-    _resolveHeader(route, controller, params) {
-        // Explicit override on route (allows passing null to suppress)
-        if (route.headerConfig !== undefined) {
-            return route.headerConfig;
-        }
-
-        // Controller dynamic getter
-        if (typeof controller?.getHeader === 'function') {
-            return controller.getHeader(params);
-        }
-        if (controller?.header) {
-            return controller.header;
-        }
-
-        // Centralized configuration registry lookup
-        const lookupKey = route.routeName || route.path;
-        if (PAGE_HEADERS && PAGE_HEADERS[lookupKey]) {
-            return PAGE_HEADERS[lookupKey];
-        }
-
-        // Strip group prefix for fallback lookup (e.g. 'bean/definitions' -> 'definitions')
-        const baseKey = lookupKey.split('/').pop();
-        if (PAGE_HEADERS && PAGE_HEADERS[baseKey]) {
-            return PAGE_HEADERS[baseKey];
-        }
-
-        return null;
-    }
-
-    /**
-     * Dynamically updates the document title based on route config and resolved header.
-     * @private
-     */
-    _updateDocumentTitle(route, headerConfig) {
-        const pageTitle = route.customTitle || headerConfig?.title;
+    _updateDocumentTitle(route, controller) {
+        const pageTitle = route.customTitle || controller?.title || this._formatTitleFromName(route.routeName);
         if (pageTitle) {
             document.title = `${this.appTitle}${this.titleSeparator}${pageTitle}`;
         } else {
@@ -426,10 +339,17 @@ export default class Router {
         }
     }
 
-    /**
-     * Loads template from cache or fetches over network.
-     * @private
-     */
+    _formatTitleFromName(name) {
+        if (!name) return null;
+        return name
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/[-_]+/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    }
+
     async _loadTemplate(templateName) {
         if (this.templateCache.has(templateName)) {
             return this.templateCache.get(templateName);
@@ -441,10 +361,6 @@ export default class Router {
         return html;
     }
 
-    /**
-     * Renders routing error panel with retry trigger.
-     * @private
-     */
     _renderError(message) {
         const errorClone = TemplateEngine.clone('tpl-app-error');
         if (errorClone) {
@@ -454,147 +370,116 @@ export default class Router {
         }
     }
 
-    /**
-     * Updates visual states for navigation links and manages submenu expansion.
-     * @param {string} activePage
-     */
     updateSidebarVisuals(activePage) {
-        const { sublink, parent } = NAV_STYLES;
         const normalizedActive = this._normalizePath(activePage);
 
-        $('aside nav a, aside nav button, aside nav .parent-link').each((_, element) => {
-            const $link = $(element);
-            const pageAttr = this._normalizePath($link.data('page'));
-            const isSubLink = $link.parent().hasClass('submenu');
+        this._updateSubmenus(normalizedActive);
+        this._updateStandaloneLinks(normalizedActive);
+    }
 
-            // Matches exact page, or suffix (e.g. 'bean/definitions' matches 'definitions')
-            const isActive = pageAttr && (pageAttr === normalizedActive || normalizedActive.endsWith(pageAttr));
-
-            if (isSubLink) {
-                $link.toggleClass(sublink.active, isActive)
-                    .toggleClass(sublink.inactive, !isActive);
-
-                if (isActive) {
-                    const $submenu = $link.parent('.submenu');
-                    this._toggleSubmenu($submenu, $submenu.prev('.parent-link'), true);
-                }
-                return;
-            }
-
-            const isParent = $link.hasClass('parent-link');
-            const $submenu = isParent ? $link.next('.submenu') : $();
-            const hasActiveChild = $submenu.length > 0 && $submenu.find('a').filter((_, a) => {
-                const subPage = this._normalizePath($(a).data('page'));
-                return subPage && (subPage === normalizedActive || normalizedActive.endsWith(subPage));
-            }).length > 0;
-
-            if (isParent) {
-                const isParentActive = hasActiveChild || Boolean(isActive);
-                $link.toggleClass(parent.active, isParentActive)
-                    .toggleClass(parent.inactive, !isParentActive);
-
-                if (hasActiveChild) {
-                    this._toggleSubmenu($submenu, $link, true);
-                }
-            } else if (pageAttr) {
-                $link.toggleClass(parent.active, isActive)
-                    .toggleClass(parent.inactive, !isActive);
-            }
-        });
+    _updateSubmenus(normalizedActive) {
+        const { sublink, parent } = NAV_STYLES;
 
         $('.submenu').each((_, element) => {
             const $submenu = $(element);
-            const hasActiveChild = $submenu.find('a').filter((_, a) => {
-                const subPage = this._normalizePath($(a).data('page'));
-                return subPage && (subPage === normalizedActive || normalizedActive.endsWith(subPage));
-            }).length > 0;
+            const $parentLink = $submenu.prev('.parent-link');
+            let hasActiveChild = false;
 
-            if (!hasActiveChild) {
-                const $parent = $submenu.prev('.parent-link');
-                this._toggleSubmenu($submenu, $parent, false);
-                $parent.toggleClass(parent.active, false)
-                    .toggleClass(parent.inactive, true);
-            }
+            $submenu.find('a').each((_, child) => {
+                const $child = $(child);
+                const isActive = this._isPathMatch($child.data('page'), normalizedActive);
+
+                $child.toggleClass(sublink.active, isActive)
+                    .toggleClass(sublink.inactive, !isActive);
+
+                if (isActive) {
+                    hasActiveChild = true;
+                }
+            });
+
+            const isParentActive = hasActiveChild || this._isPathMatch($parentLink.data('page'), normalizedActive);
+            $parentLink.toggleClass(parent.active, isParentActive)
+                .toggleClass(parent.inactive, !isParentActive);
+
+            this._toggleSubmenu($submenu, $parentLink, isParentActive);
         });
     }
 
-    /**
-     * Slides submenus and rotates chevron icons.
-     * @private
-     */
+    _updateStandaloneLinks(normalizedActive) {
+        const { parent } = NAV_STYLES;
+
+        $('aside nav [data-page]:not(.submenu [data-page])').each((_, element) => {
+            const $link = $(element);
+            const isActive = this._isPathMatch($link.data('page'), normalizedActive);
+
+            $link.toggleClass(parent.active, isActive)
+                .toggleClass(parent.inactive, !isActive);
+        });
+    }
+
+    _isPathMatch(page, normalizedActive) {
+        const normalized = this._normalizePath(page);
+        if (!normalized || !normalizedActive) return false;
+        return normalized === normalizedActive ||
+            normalizedActive.endsWith(`/${normalized}`) ||
+            normalizedActive.startsWith(`${normalized}/`);
+    }
+
     _toggleSubmenu($submenu, $parentLink, shouldExpand) {
         if (!$submenu?.length) return;
 
-        if (shouldExpand && $submenu.is(':hidden')) {
-            $submenu.stop(true, true).slideDown(200);
-            $parentLink.find('.chevron-icon').addClass('rotate-180');
-        } else if (!shouldExpand && $submenu.is(':visible')) {
-            $submenu.stop(true, true).slideUp(200);
-            $parentLink.find('.chevron-icon').removeClass('rotate-180');
-        }
+        const isExpanded = $submenu.is(':visible');
+        if (Boolean(shouldExpand) === isExpanded) return;
+
+        $submenu.stop(true, true)[shouldExpand ? 'slideDown' : 'slideUp'](200);
+        $parentLink.find('.chevron-icon').toggleClass('rotate-180', Boolean(shouldExpand));
     }
 
-    /**
-     * Binds delegated navigation and accordion menu handlers.
-     * @private
-     */
     _bindNavEvents() {
         $(document).off('click.springLensNav', '.parent-link, .nav-link')
             .on('click.springLensNav', '.parent-link, .nav-link', (event) => {
                 event.preventDefault();
-                const $target = $(event.currentTarget);
-                const page = $target.data('page');
-                const isParent = $target.hasClass('parent-link');
-
-                if (!isParent) {
-                    if (page) this.navigate(page);
-                    return;
-                }
-
-                const $submenu = $target.next('.submenu');
-                if (!$submenu.length) {
-                    if (page) this.navigate(page);
-                    return;
-                }
-
-                const isVisible = $submenu.is(':visible');
-                this._toggleSubmenu($submenu, $target, !isVisible);
-
-                if (page) {
-                    this.navigate(page);
-                }
+                this._handleNavClick($(event.currentTarget));
             });
     }
 
+    _handleNavClick($target) {
+        if ($target.hasClass('parent-link')) {
+            const $submenu = $target.next('.submenu');
+            if ($submenu.length) {
+                this._toggleSubmenu($submenu, $target, !$submenu.is(':visible'));
+            }
+        }
 
+        const page = $target.data('page');
+        if (page) {
+            this.navigate(page);
+        }
+    }
 
     _normalizePath(path) {
-        if (!path || path === '/') return '';
-        return String(path).replace(/^\/+|\/+$/g, '');
+        return path ? String(path).replace(/^\/+/, '').replace(/\/+$/, '') : '';
     }
 
     _applyGroupPrefix(path) {
-        const normalized = this._normalizePath(path);
-        const prefixes = this._groupStack
-            .map(g => g.prefix)
-            .filter(Boolean)
-            .map(p => this._normalizePath(p));
+        const segments = this._groupStack
+            .map((group) => this._normalizePath(group.prefix))
+            .filter(Boolean);
 
-        if (!prefixes.length) return normalized;
-        return [...prefixes, normalized].filter(Boolean).join('/');
+        const normalizedPath = this._normalizePath(path);
+        if (normalizedPath) {
+            segments.push(normalizedPath);
+        }
+
+        return segments.join('/');
     }
 
     _getActiveGroupMiddlewares() {
         return this._groupStack
-            .map(g => g.middleware)
-            .filter(Boolean)
-            .flat();
+            .flatMap((group) => group.middleware || [])
+            .filter(Boolean);
     }
 
-    /**
-     * Registers legacy routes object for full backward compatibility.
-     * @private
-     */
     _registerLegacyRoutes(routesObj = {}) {
         Object.entries(routesObj).forEach(([path, config]) => {
             if (config.redirectTo) {
@@ -604,7 +489,6 @@ export default class Router {
 
             const route = this.get(path);
             if (config.template) route.view(config.template);
-            if (config.header !== undefined) route.header(config.header);
             if (config.title) route.title(config.title);
             if (config.onEnter) route.onEnter(config.onEnter);
             if (config.onLeave) route.onLeave(config.onLeave);

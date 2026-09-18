@@ -178,7 +178,7 @@ export class DashboardController extends BaseController {
     /**
      * Enters dashboard route, sets up event listeners, and fetches all dashboard data.
      */
-    async enter() {
+    async enter(params, context) {
         try {
             this.resetSearch();
             this.addDisposable(chartWidget);

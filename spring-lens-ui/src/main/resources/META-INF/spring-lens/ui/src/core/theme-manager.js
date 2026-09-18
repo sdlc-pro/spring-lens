@@ -1,36 +1,40 @@
-/**
- * Theme Manager.
- * Manages light / dark mode toggling and dispatches `theme changed` events.
- */
 export class ThemeManager {
-    /**
-     * Initializes theme toggle event binding.
-     * @param {string} [toggleSelector='#theme-toggle']
-     */
-    static init(toggleSelector = '#theme-toggle') {
-        $(toggleSelector).off('click.themeToggle').on('click.themeToggle', () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            document.dispatchEvent(new CustomEvent('themechanged', { detail: { theme: isDark ? 'dark' : 'light' } }));
-        });
+
+    constructor() {
+        throw new TypeError('ThemeManager is a static utility class and cannot be instantiated.');
     }
 
-    /**
-     * Returns true if dark mode is currently active.
-     * @returns {boolean}
-     */
+    static init(toggleSelector = '#theme-toggle') {
+        $(toggleSelector).off('click.themeToggle').on('click.themeToggle', () => this.toggle());
+    }
+
     static isDark() {
         return document.documentElement.classList.contains('dark');
     }
 
-    /**
-     * Programmatically sets the theme.
-     * @param {boolean} enableDark
-     */
+    static getTheme() {
+        return this.isDark() ? 'dark' : 'light';
+    }
+
+    static setTheme(theme) {
+        return this.setDark(theme === 'dark');
+    }
+
     static setDark(enableDark) {
-        document.documentElement.classList.toggle('dark', enableDark);
-        localStorage.setItem('theme', enableDark ? 'dark' : 'light');
-        document.dispatchEvent(new CustomEvent('themechanged', { detail: { theme: enableDark ? 'dark' : 'light' } }));
+        const isDark = Boolean(enableDark);
+        const theme = isDark ? 'dark' : 'light';
+
+        document.documentElement.classList.toggle('dark', isDark);
+        localStorage.setItem('theme', theme);
+        document.dispatchEvent(new CustomEvent('themechanged', {
+            detail: { theme, isDark }
+        }));
+
+        return isDark;
+    }
+
+    static toggle() {
+        return this.setDark(!this.isDark());
     }
 }
 

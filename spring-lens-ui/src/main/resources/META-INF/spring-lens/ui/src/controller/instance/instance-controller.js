@@ -474,6 +474,18 @@ export class InstanceController extends BaseController {
             customModalPreviewCount: preview.count,
             customModalPreviewText: preview.text
         });
+
+        this._focusCustomThresholdInput();
+    }
+
+    _focusCustomThresholdInput() {
+        setTimeout(() => {
+            const input = document.getElementById('custom-threshold-input');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 50);
     }
 
     closeCustomThresholdModal() {

@@ -1,48 +1,45 @@
-/**
- * Asynchronous Middleware Pipeline.
- * Executes a sequence of middleware handlers `(context, next) => ...`
- * prior to dispatching the matched route and controller action.
- */
 export default class Pipeline {
 
-    constructor(middlewares = []) {
-        this.middlewares = [...middlewares];
+    constructor(...middlewares) {
+        this.middlewares = [];
+        this.context = null;
+        this.pipe(...middlewares);
     }
 
-    /**
-     * Appends middleware handlers to the pipeline.
-     * @param {...Function} middlewares
-     * @returns {Pipeline}
-     */
-    pipe(...middlewares) {
-        this.middlewares.push(...middlewares.flat().filter(Boolean));
+    send(context) {
+        this.context = context;
         return this;
     }
 
-    /**
-     * Executes the pipeline with a given context object.
-     * @param {Object} context - Routing context passed to each middleware.
-     * @param {Function} [destination] - Final handler executed after all middlewares call next().
-     * @returns {Promise<*>}
-     */
-    async run(context, destination) {
-        let index = -1;
+    through(...middlewares) {
+        this.middlewares = [];
+        return this.pipe(...middlewares);
+    }
 
-        const runner = async (i) => {
-            if (i <= index) {
+    pipe(...middlewares) {
+        const handlers = middlewares.flat(Infinity).filter(fn => typeof fn === 'function');
+        this.middlewares.push(...handlers);
+        return this;
+    }
+
+    async thenRun(destination = null) {
+        let currentIndex = -1;
+
+        const dispatch = async (index) => {
+            if (index <= currentIndex) {
                 throw new Error('next() called multiple times in middleware pipeline');
             }
-            index = i;
+            currentIndex = index;
 
-            const middleware = this.middlewares[i];
-            if (!middleware) {
-                return destination ? destination(context) : undefined;
+            const handler = this.middlewares[index];
+            if (!handler) {
+                return destination ? destination(this.context) : undefined;
             }
 
-            return middleware(context, () => runner(i + 1));
+            return handler(this.context, () => dispatch(index + 1));
         };
 
-        return runner(0);
+        return dispatch(0);
     }
 }
 

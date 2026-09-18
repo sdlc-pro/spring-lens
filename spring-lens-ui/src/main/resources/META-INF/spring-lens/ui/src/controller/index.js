@@ -1,7 +1,3 @@
-/**
- * Master Controller Barrel.
- * Exports all feature controllers and their aliases for unified import access.
- */
 export { default as BaseController } from './base-controller.js';
 export { ApplicationStateController } from './application-state/index.js';
 export { ConditionalReportController } from './conditional-report/index.js';
