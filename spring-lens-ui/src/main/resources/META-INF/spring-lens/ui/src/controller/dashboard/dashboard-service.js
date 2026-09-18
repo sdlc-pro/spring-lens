@@ -1,22 +1,16 @@
 import httpClient from '../../helper/http-client.js';
 import { QueryParam } from '../../helper/index.js';
 
-/**
- * Service responsible for fetching dashboard telemetry, metrics, and search data.
- */
 export default class DashboardService {
 
-    /**
-     * @param {Object} endpoints - Mapping of API endpoints.
-     */
-    constructor(endpoints = {}) {
+    constructor(ENDPOINTS = {}) {
         this.endpoints = {
-            application: endpoints.APPLICATION_INFO,
-            definitions: endpoints.BEAN_DEFINITION,
-            instances: endpoints.BEAN_INSTANCE,
-            conditions: endpoints.CONDITIONAL_REPORTS,
-            dependencies: endpoints.GRAPH_DEPENDENCIES,
-            definitionsSummary: endpoints.SUMMARY_BEAN_DEFINITION
+            application         : ENDPOINTS.APPLICATION_INFO,
+            instances           : ENDPOINTS.BEAN_INSTANCE,
+            conditions          : ENDPOINTS.CONDITIONAL_REPORTS,
+            dependencies        : ENDPOINTS.GRAPH_DEPENDENCIES,
+            definitions         : ENDPOINTS.BEAN_DEFINITION,
+            definitionsSummary  : ENDPOINTS.SUMMARY_BEAN_DEFINITION
         };
     }
 
@@ -25,7 +19,6 @@ export default class DashboardService {
      * @returns {Promise<Object>}
      */
     async fetchApplicationInfo() {
-        if (!this.endpoints.application) return null;
         return httpClient.get(this.endpoints.application);
     }
 
@@ -34,7 +27,6 @@ export default class DashboardService {
      * @returns {Promise<Object>}
      */
     async fetchDefinitionsSummary() {
-        if (!this.endpoints.definitionsSummary) return null;
         return httpClient.get(this.endpoints.definitionsSummary);
     }
 
@@ -44,19 +36,17 @@ export default class DashboardService {
      * @returns {Promise<Object>}
      */
     async fetchInstances(options = {}) {
-        if (!this.endpoints.instances) return null;
         const { pageSize = 100, sortBy = 'initDurationNanos', sortDir = 'DESC' } = options;
         const query = QueryParam.build({ pageSize, sortBy, sortDir }).toString();
         return httpClient.getWithQuery(this.endpoints.instances, query);
     }
 
     /**
-     * Fetches auto-configuration condition reports.
+     * Fetches autoconfiguration condition reports.
      * @param {Object} [options]
      * @returns {Promise<Object>}
      */
     async fetchConditions(options = {}) {
-        if (!this.endpoints.conditions) return null;
         const { pageSize = 100 } = options;
         const query = QueryParam.build({ pageSize }).toString();
         return httpClient.getWithQuery(this.endpoints.conditions, query);
@@ -68,7 +58,6 @@ export default class DashboardService {
      * @returns {Promise<Object>}
      */
     async fetchDependencies(options = {}) {
-        if (!this.endpoints.dependencies) return null;
         const { pageSize = 100 } = options;
         const query = QueryParam.build({ pageSize }).toString();
         return httpClient.getWithQuery(this.endpoints.dependencies, query);
@@ -81,7 +70,7 @@ export default class DashboardService {
      * @returns {Promise<Object>}
      */
     async searchDefinitions(query, options = {}) {
-        if (!this.endpoints.definitions || !query) return { content: [] };
+        if (!query) return { content: [] };
         const { pageSize = 9 } = options;
         const queryParams = QueryParam.build({
             search: query,
@@ -97,12 +86,12 @@ export default class DashboardService {
      */
     async fetchAll(callbacks = {}) {
         const {
-            onApplicationInfo,
-            onApplicationFallback,
-            onDefinitionsSummary,
             onInstances,
             onConditions,
-            onDependencies
+            onDependencies,
+            onApplicationInfo,
+            onDefinitionsSummary,
+            onApplicationFallback,
         } = callbacks;
 
         await Promise.allSettled([

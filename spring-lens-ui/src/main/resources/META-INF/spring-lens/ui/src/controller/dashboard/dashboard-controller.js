@@ -34,7 +34,7 @@ export class DashboardController extends BaseController {
             profiles: ['default'],
             profilesLabel: 'Active Profiles',
             isActiveProfiles: false,
-            isLive: true,
+            isHealthIsUp: true,
             uptime: '--',
 
             // Quick Search State
@@ -112,16 +112,6 @@ export class DashboardController extends BaseController {
         this._lastAppInfo = null;
         this._latestSearchQuery = '';
 
-        // Transparent property proxy so this[key] seamlessly links with this.state[key]
-        for (const key of Object.keys(this.state)) {
-            Object.defineProperty(this, key, {
-                get: () => this.state[key],
-                set: (value) => this.setState({ [key]: value }),
-                configurable: true,
-                enumerable: true,
-            });
-        }
-
         // Subscribe to application health transitions
         this.applicationState?.onStateChange((isHealthIsUp) => {
             const wasDown = this.currentUptimeState === false;
@@ -138,18 +128,6 @@ export class DashboardController extends BaseController {
                 this.updateApplicationInfo(appInfo);
             }
         });
-    }
-
-    /**
-     * Updates reactive dashboard state and propagates changes to Alpine in one call.
-     * @param {Object} patch - Key-value map of state properties to update.
-     */
-    setState(patch) {
-        if (!patch) return;
-        Object.assign(this.state, patch);
-        if (this.alpine) {
-            Object.assign(this.alpine, patch);
-        }
     }
 
     /**
@@ -183,7 +161,7 @@ export class DashboardController extends BaseController {
             this.resetSearch();
             this.addDisposable(chartWidget);
             this.addDisposable(radialTreeWidget);
-            this.addDisposable(() => this._stopUptimeTracker());
+            this.addDisposable(() => this.stopUptimeTimer());
 
             this.applicationState?.checkHealth()?.catch(() => { });
             this._bindEventListeners();
@@ -195,7 +173,6 @@ export class DashboardController extends BaseController {
 
     leave() {
         this.resetSearch();
-        this._stopUptimeTracker();
         this.currentUptimeState = null;
         this.appStartDate = null;
 
@@ -221,96 +198,69 @@ export class DashboardController extends BaseController {
 
     /**
      * Updates application runtime telemetry state and starts uptime tracker.
-     * @param {Object} app
+     * @param {Object} applicationInfo
      */
-    updateApplicationInfo(app) {
-        if (!app) {
+    updateApplicationInfo(applicationInfo) {
+        if (!applicationInfo) {
             this.updateApplicationFallback();
             return;
         }
 
-        this._lastAppInfo = app;
-        const vm = heroWidget.extractViewModel(app);
+        this._lastAppInfo = applicationInfo;
+        const application = heroWidget.extractViewModel(applicationInfo);
 
-        this.applicationState?.setAppInfo(app);
-        this.appStartDate = vm.startDate;
+        this.applicationState?.setAppInfo(applicationInfo);
+        this.appStartDate = application.startDate;
 
-        if (vm.startDate && this.currentUptimeState !== false) {
-            this._startUptimeTracker(vm.startDate);
+        if (this.currentUptimeState !== false) {
+            this.updateUptimeStatus(true);
         }
-
-        this.setState({
-            loading: false,
-            appName: vm.name,
-            bootVersion: vm.bootVersion,
-            frameworkVersion: vm.frameworkVersion,
-            javaVersion: vm.javaVersion,
-            javaVendor: vm.javaVendor,
-            startupDuration: vm.startupDuration,
-            startedAt: vm.formattedStartedAt,
-            isActiveProfiles: vm.isActiveProfiles,
-            profilesLabel: vm.profilesLabel,
-            profiles: vm.profiles
-        });
+        this._updateApplicationInformation(application);
     }
 
     /**
      * Sets fallback telemetry values when backend service is unreachable.
      */
     updateApplicationFallback() {
-        const vm = heroWidget.getFallbackViewModel();
         this.updateUptimeStatus(false);
+        this._updateApplicationInformation(heroWidget.getFallbackViewModel());
+    }
+
+    _updateApplicationInformation(application) {
         this.setState({
-            loading: false,
-            appName: vm.name,
-            bootVersion: vm.bootVersion,
-            frameworkVersion: vm.frameworkVersion,
-            javaVersion: vm.javaVersion,
-            javaVendor: vm.javaVendor,
-            startupDuration: vm.startupDuration,
-            startedAt: vm.formattedStartedAt,
-            profilesLabel: vm.profilesLabel,
-            profiles: vm.profiles,
-            isActiveProfiles: vm.isActiveProfiles
+            loading             : false,
+            appName             : application.name,
+            profiles            : application.profiles,
+            startedAt           : application.formattedStartedAt,
+            javaVendor          : application.javaVendor,
+            javaVersion         : application.javaVersion,
+            bootVersion         : application.bootVersion,
+            profilesLabel       : application.profilesLabel,
+            startupDuration     : application.startupDuration,
+            isActiveProfiles    : application.isActiveProfiles,
+            frameworkVersion    : application.frameworkVersion,
         });
     }
 
-    /**
-     * Updates live connection status and controls uptime tracking timer.
-     * @param {boolean} isLive
-     */
-    updateUptimeStatus(isLive) {
-        if (this.currentUptimeState === isLive) return;
 
-        this.currentUptimeState = isLive;
-        this.setState({ isLive });
-
-        if (isLive) {
-            if (this.appStartDate) {
-                this._startUptimeTracker(this.appStartDate);
-            }
-        } else {
-            this._stopUptimeTracker();
-        }
-    }
-
-    _startUptimeTracker(startDate) {
-        this._stopUptimeTracker();
-        this.appStartDate = startDate;
-
-        const update = () => {
-            this.setState({ uptime: heroWidget.calculateUptime(startDate) });
-        };
-
-        update();
-        this.uptimeInterval = setInterval(update, 1000);
-    }
-
-    _stopUptimeTracker() {
+    stopUptimeTimer() {
         if (this.uptimeInterval) {
             clearInterval(this.uptimeInterval);
             this.uptimeInterval = null;
         }
+    }
+
+    updateUptimeStatus(isHealthIsUp) {
+        this.stopUptimeTimer();
+
+        this.currentUptimeState = isHealthIsUp;
+        this.setState({ isHealthIsUp, isLive: isHealthIsUp });
+
+        if (!isHealthIsUp || !this.appStartDate) return;
+
+        const tick = () => this.setState({ uptime: heroWidget.calculateUptime(this.appStartDate) });
+        tick();
+        this.uptimeInterval = setInterval(tick, 1000);
     }
 
     // --- Quick Search Business Logic ---

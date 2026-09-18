@@ -12,10 +12,12 @@ export default class ConditionReportService {
      * @param {string} [endpoints.FIND_CONDITIONAL_REPORTS]
      * @param {string} [endpoints.SUMMARY_CONDITIONAL_REPORTS]
      */
-    constructor(endpoints = {}) {
-        this.conditionEvaluationApiUrl = endpoints.CONDITIONAL_REPORTS;
-        this.searchConditionalEvaluationApiUrl = endpoints.FIND_CONDITIONAL_REPORTS;
-        this.summaryConditionApiUrl = endpoints.SUMMARY_CONDITIONAL_REPORTS;
+    constructor(ENDPOINTS = {}) {
+        this.endpoints = {
+            conditions  : ENDPOINTS.CONDITIONAL_REPORTS,
+            find        : ENDPOINTS.FIND_CONDITIONAL_REPORTS,
+            summary     : ENDPOINTS.SUMMARY_CONDITIONAL_REPORTS
+        };
     }
 
     /**
@@ -23,13 +25,10 @@ export default class ConditionReportService {
      * @returns {Promise<Object>}
      */
     async fetchConditionalSummary() {
-        if (!this.summaryConditionApiUrl) return null;
-        return httpClient.get(this.summaryConditionApiUrl);
+        return httpClient.get(this.endpoints.summary);
     }
 
     async fetchConditionEvaluations(criteria = {}) {
-        if (!this.conditionEvaluationApiUrl) return { content: [] };
-
         const pageNum = typeof criteria.pageNumber === 'number'
             ? Math.max(0, criteria.pageNumber)
             : Math.max(0, (criteria.page || 1) - 1);
@@ -50,7 +49,7 @@ export default class ConditionReportService {
         }
 
         const query = QueryParam.build(params).toString();
-        return httpClient.getWithQuery(this.conditionEvaluationApiUrl, query);
+        return httpClient.getWithQuery(this.endpoints.conditions, query);
     }
 
     /**
@@ -59,7 +58,7 @@ export default class ConditionReportService {
      * @returns {Promise<number|null>}
      */
     async fetchSearchTotalCount(searchQuery) {
-        if (!this.conditionEvaluationApiUrl || !searchQuery) return null;
+        if (!searchQuery) return null;
 
         try {
             const query = QueryParam.build({
@@ -68,7 +67,7 @@ export default class ConditionReportService {
                 pageSize: 1
             }).toString();
 
-            const responseData = await httpClient.getWithQuery(this.conditionEvaluationApiUrl, query);
+            const responseData = await httpClient.getWithQuery(this.endpoints.conditions, query);
             return responseData?.totalElements ?? null;
         } catch (error) {
             console.warn('Could not fetch all-outcomes count for search query:', error);
@@ -83,11 +82,11 @@ export default class ConditionReportService {
      * @returns {Promise<Object|null>}
      */
     async findConditionEvaluation(contextId, source) {
-        if (!this.searchConditionalEvaluationApiUrl || !contextId || !source) return null;
+        if (!contextId || !source) return null;
 
         try {
             const query = QueryParam.build({ contextId, source }).toString();
-            return await httpClient.getWithQuery(this.searchConditionalEvaluationApiUrl, query);
+            return await httpClient.getWithQuery(this.endpoints.find, query);
         } catch (err) {
             console.warn('Could not fetch single condition snapshot:', err);
             return null;

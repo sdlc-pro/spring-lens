@@ -35,6 +35,16 @@ export default class BaseController {
         }
     }
 
+    setState(patch) {
+        if (!patch) return;
+        if (this.state) {
+            Object.assign(this.state, patch);
+        }
+        if (this.alpine) {
+            Object.assign(this.alpine, patch);
+        }
+    }
+
     /**
      * Lifecycle hook invoked when navigating into this route/controller.
      * Subclasses should override this to trigger initialization.

@@ -203,15 +203,15 @@ export class DependencyGraphController extends BaseController {
     }
 
     get dependencyGraphApi() {
-        return this.service.dependencyGraphApi;
+        return this.service.endpoints?.dependencies;
     }
 
     get beanDefinitions() {
-        return this.service.beanDefinitions;
+        return this.service.endpoints?.definitions;
     }
 
     get findBeanDefinitionsApi() {
-        return this.service.findBeanDefinitionsApi;
+        return this.service.endpoints?.find;
     }
 
     async enter(params) {

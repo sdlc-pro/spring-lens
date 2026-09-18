@@ -12,10 +12,12 @@ export default class DefinitionService {
      * @param {string} [endpoints.SUMMARY_BEAN_DEFINITION]
      * @param {string} [endpoints.FIND_BEAN_DEFINITION]
      */
-    constructor(endpoints = {}) {
-        this.beanDefinitionEndpoint = endpoints.BEAN_DEFINITION;
-        this.beanDefinitionSummaryEndpoint = endpoints.SUMMARY_BEAN_DEFINITION;
-        this.beanDefinitionSearchEndpoint = endpoints.FIND_BEAN_DEFINITION;
+    constructor(ENDPOINTS = {}) {
+        this.endpoints = {
+            definitions         : ENDPOINTS.BEAN_DEFINITION,
+            summary             : ENDPOINTS.SUMMARY_BEAN_DEFINITION,
+            find                : ENDPOINTS.FIND_BEAN_DEFINITION
+        };
     }
 
     /**
@@ -23,9 +25,8 @@ export default class DefinitionService {
      * @returns {Promise<Object|null>}
      */
     async fetchSummary() {
-        if (!this.beanDefinitionSummaryEndpoint) return null;
         try {
-            return await httpClient.get(this.beanDefinitionSummaryEndpoint);
+            return await httpClient.get(this.endpoints.summary);
         } catch (err) {
             console.error('Failed to fetch bean definitions summary:', err);
             throw err;
@@ -38,8 +39,6 @@ export default class DefinitionService {
      * @returns {Promise<Object>}
      */
     async fetchTableData(criteria = {}) {
-        if (!this.beanDefinitionEndpoint) return { content: [] };
-
         const pageNumber = criteria.pageNumber !== undefined
             ? criteria.pageNumber
             : Math.max(0, (criteria.currentPage || 1) - 1);
@@ -73,7 +72,7 @@ export default class DefinitionService {
             sortDir
         });
 
-        return httpClient.getWithQuery(this.beanDefinitionEndpoint, queryParams.toString());
+        return httpClient.getWithQuery(this.endpoints.definitions, queryParams.toString());
     }
 
     /**
@@ -83,11 +82,11 @@ export default class DefinitionService {
      * @returns {Promise<Object|null>}
      */
     async findBeanDefinition(beanName, contextId = '') {
-        if (!this.beanDefinitionSearchEndpoint || !beanName) return null;
+        if (!beanName) return null;
 
         try {
             const queryParams = QueryParam.build({ contextId, beanName }).toString();
-            return await httpClient.getWithQuery(this.beanDefinitionSearchEndpoint, queryParams);
+            return await httpClient.getWithQuery(this.endpoints.find, queryParams);
         } catch (err) {
             console.warn('Failed to fetch bean definition details:', beanName, err);
             return null;

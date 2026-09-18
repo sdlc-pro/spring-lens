@@ -2,16 +2,17 @@ import httpClient from '../../helper/http-client.js';
 import { QueryParam, DomUtils } from '../../helper/index.js';
 
 export class InstanceService {
-    constructor(endpoints = {}) {
-        this.beanInstanceApi = endpoints.BEAN_INSTANCE;
-        this.beanInstanceFindApi = endpoints.FIND_BEAN_INSTANCE;
-        this.beanInstanceSummaryApi = endpoints.SUMMARY_BEAN_INSTANCE;
-        this.beanInstanceProxyApi = endpoints.PROXY_BEAN_INSTANCE;
+    constructor(ENDPOINTS = {}) {
+        this.endpoints = {
+            instances   : ENDPOINTS.BEAN_INSTANCE,
+            find        : ENDPOINTS.FIND_BEAN_INSTANCE,
+            summary     : ENDPOINTS.SUMMARY_BEAN_INSTANCE,
+            proxy       : ENDPOINTS.PROXY_BEAN_INSTANCE
+        };
     }
 
     async fetchSummaryData() {
-        if (!this.beanInstanceSummaryApi) return null;
-        return httpClient.get(this.beanInstanceSummaryApi);
+        return httpClient.get(this.endpoints.summary);
     }
 
     async fetchInstanceData(queryOptions = {}) {
@@ -24,25 +25,25 @@ export class InstanceService {
         });
 
         return httpClient.getWithQuery(
-            this.beanInstanceApi,
+            this.endpoints.instances,
             queryParams.toString()
         );
     }
 
     async findBeanInstance(contextId, beanName) {
-        if (!this.beanInstanceFindApi || !beanName) return null;
+        if (!beanName) return null;
         const queryParams = QueryParam.build({ contextId, beanName });
         return httpClient.getWithQuery(
-            this.beanInstanceFindApi,
+            this.endpoints.find,
             queryParams.toString()
         );
     }
 
     async fetchProxyInfo(contextId, beanName) {
-        if (!this.beanInstanceProxyApi || !beanName) return null;
+        if (!beanName) return null;
         const queryParams = QueryParam.build({ contextId, beanName });
         return httpClient.getWithQuery(
-            this.beanInstanceProxyApi,
+            this.endpoints.proxy,
             queryParams.toString()
         );
     }

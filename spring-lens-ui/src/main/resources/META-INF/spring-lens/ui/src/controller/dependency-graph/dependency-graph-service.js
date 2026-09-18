@@ -8,10 +8,12 @@ export class DependencyGraphService {
     /**
      * @param {Object} [endpoints] - API endpoints mapping
      */
-    constructor(endpoints = {}) {
-        this.dependencyGraphApi = endpoints.GRAPH_DEPENDENCIES;
-        this.beanDefinitions = endpoints.BEAN_DEFINITION;
-        this.findBeanDefinitionsApi = endpoints.FIND_BEAN_DEFINITION;
+    constructor(ENDPOINTS = {}) {
+        this.endpoints = {
+            dependencies    : ENDPOINTS.GRAPH_DEPENDENCIES,
+            definitions     : ENDPOINTS.BEAN_DEFINITION,
+            find            : ENDPOINTS.FIND_BEAN_DEFINITION
+        };
 
         this.totalElements = 0;
         this.beanDependencies = null;
@@ -37,7 +39,7 @@ export class DependencyGraphService {
 
         try {
             const searchParams = QueryParam.build({ pageNumber: 0, pageSize }).toString();
-            const serverResponse = await httpClient.getWithQuery(this.dependencyGraphApi, searchParams);
+            const serverResponse = await httpClient.getWithQuery(this.endpoints.dependencies, searchParams);
             this.beanDependencies = serverResponse;
 
             const initialBeanDefinitions = Array.isArray(serverResponse)
@@ -106,7 +108,7 @@ export class DependencyGraphService {
 
                 for (let p = startPage; p <= endPage; p++) {
                     const pageParams = QueryParam.build({ pageNumber: p, pageSize: stepSize }).toString();
-                    pagePromises.push(httpClient.getWithQuery(this.dependencyGraphApi, pageParams));
+                    pagePromises.push(httpClient.getWithQuery(this.endpoints.dependencies, pageParams));
                 }
 
                 const responses = await Promise.all(pagePromises);
@@ -118,7 +120,7 @@ export class DependencyGraphService {
                 // If currentCount is evenly divisible by countToFetch, fetch in 1 clean request
                 const pageNumber = Math.floor(currentCount / countToFetch);
                 const pageParams = QueryParam.build({ pageNumber, pageSize: countToFetch }).toString();
-                const response = await httpClient.getWithQuery(this.dependencyGraphApi, pageParams);
+                const response = await httpClient.getWithQuery(this.endpoints.dependencies, pageParams);
                 fetchedRawBeans = response?.content ?? (Array.isArray(response) ? response : []);
             } else {
                 // Determine best step size (500, 250, 200, 100, 50, 25, 10)
@@ -140,7 +142,7 @@ export class DependencyGraphService {
 
                 for (let p = startPage; p <= endPage; p++) {
                     const pageParams = QueryParam.build({ pageNumber: p, pageSize: stepSize }).toString();
-                    pagePromises.push(httpClient.getWithQuery(this.dependencyGraphApi, pageParams));
+                    pagePromises.push(httpClient.getWithQuery(this.endpoints.dependencies, pageParams));
                 }
 
                 const responses = await Promise.all(pagePromises);
@@ -226,7 +228,7 @@ export class DependencyGraphService {
 
         try {
             const queryParams = QueryParam.build({ contextId, beanName }).toString();
-            const beanDetails = await httpClient.getWithQuery(this.findBeanDefinitionsApi, queryParams);
+            const beanDetails = await httpClient.getWithQuery(this.endpoints.find, queryParams);
             if (!beanDetails) return null;
 
             this.beanDetailsCache.set(cacheKey, beanDetails);
@@ -252,7 +254,7 @@ export class DependencyGraphService {
             pageSize
         }).toString();
 
-        const response = await httpClient.getWithQuery(this.beanDefinitions, queryParams);
+        const response = await httpClient.getWithQuery(this.endpoints.definitions, queryParams);
         return response?.content ?? (Array.isArray(response) ? response : []);
     }
 

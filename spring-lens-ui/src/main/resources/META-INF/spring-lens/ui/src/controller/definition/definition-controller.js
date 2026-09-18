@@ -147,8 +147,8 @@ export class DefinitionController extends BaseController {
                 graphTooltip: { ...(this.state.graphTooltip || {}), ...tooltip }
             });
         };
-        if (this.service?.beanDefinitionSearchEndpoint) {
-            this.modalWidget.findBeanEndpoint = this.service.beanDefinitionSearchEndpoint;
+        if (this.service?.endpoints?.find) {
+            this.modalWidget.findBeanEndpoint = this.service.endpoints.find;
         }
     }
 
