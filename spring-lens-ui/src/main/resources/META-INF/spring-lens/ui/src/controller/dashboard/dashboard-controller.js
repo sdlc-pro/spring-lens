@@ -1,18 +1,18 @@
 import BaseController from '../base-controller.js';
-import {
-    BeanSearchEngine,
-    BeanMetadataRules,
-    QueryParam,
-    container
-} from '../../helper/index.js';
+import { container } from '../../helper/index.js';
 import {
     heroWidget,
     chartWidget,
     bottlenecksWidget,
     conditionsWidget,
     hubsWidget,
-    radialTreeWidget
+    radialTreeWidget,
+    quickSearchWidget
 } from './index.js';
+
+const whenPresent = (action) => (payload) => {
+    if (payload) action(payload);
+};
 
 export class DashboardController extends BaseController {
 
@@ -110,7 +110,6 @@ export class DashboardController extends BaseController {
         this.appStartDate = null;
         this.uptimeInterval = null;
         this._lastAppInfo = null;
-        this._latestSearchQuery = '';
 
         // Subscribe to application health transitions
         this.applicationState?.onStateChange((isHealthIsUp) => {
@@ -136,20 +135,20 @@ export class DashboardController extends BaseController {
     createAlpineState() {
         return {
             ...this.state,
-            get searchVisible() {
+            get whenFoundSearchedValue() {
                 return Boolean(this.searchLoading
                     || this.searchEmpty
                     || (this.searchItems && this.searchItems.length > 0)
                 );
             },
-            goTo: (route, name, contextId) => this.goTo(route, name, contextId),
-            search: () => this.search(),
-            radialReset: () => this.radialReset(),
-            refreshData: () => this.reloadDashboardData(),
-            resetSearch: () => this.resetSearch(),
-            radialZoom: (factor) => this.radialZoom(factor),
-            setChartMode: (mode) => this.setChartMode(mode),
-            reloadDashboardData: () => this.reloadDashboardData(),
+            goTo                : (route, name, contextId) => this.goTo(route, name, contextId),
+            search              : () => this.search(),
+            radialReset         : () => this.radialReset(),
+            refreshData         : () => this.reloadDashboardData(),
+            resetSearch         : () => this.resetSearch(),
+            radialZoom          : (factor) => this.radialZoom(factor),
+            setChartMode        : (mode) => this.setChartMode(mode),
+            reloadDashboardData : () => this.reloadDashboardData(),
         };
     }
 
@@ -187,11 +186,11 @@ export class DashboardController extends BaseController {
             ?.then(isHealthIsUp => this.updateUptimeStatus(isHealthIsUp));
 
         await this.service.fetchAll({
-            onInstances: (data) => this.updateInstancesData(data),
-            onConditions: (data) => this.updateConditionsData(data),
-            onDependencies: (data) => this.updateDependenciesData(data),
+            onInstances: whenPresent((data) => this.updateInstancesData(data)),
+            onConditions: whenPresent((data) => this.updateConditionsData(data)),
+            onDependencies: whenPresent((data) => this.updateDependenciesData(data)),
             onApplicationInfo: (data) => this.updateApplicationInfo(data),
-            onDefinitionsSummary: (data) => this.updateDefinitionsData(data),
+            onDefinitionsSummary: whenPresent((data) => this.updateDefinitionsData(data)),
             onApplicationFallback: () => this.updateApplicationFallback(),
         });
     }
@@ -263,46 +262,36 @@ export class DashboardController extends BaseController {
         this.uptimeInterval = setInterval(tick, 1000);
     }
 
-    // --- Quick Search Business Logic ---
     async search() {
-        const query = (this.alpine?.searchQuery ?? this.state?.searchQuery ?? '').trim();
+        const query = this._resolveSearchQuery();
         if (query.length < 2) {
             this.resetSearch();
             return;
         }
-        const currentQuery = query;
-        this._latestSearchQuery = currentQuery;
 
         this.setState({ searchLoading: true, searchEmpty: false });
 
         try {
-            const response = await this.service.searchDefinitions(query, { pageSize: 9 });
-
-            if (this._latestSearchQuery !== currentQuery) return;
-
-            const beanDefinitions = response?.content ?? [];
-            const searchItems = beanDefinitions.map(bean => this._formatBeanChip(bean, query));
+            const results = await quickSearchWidget.search(query, this.service);
+            if (!results) return;
 
             this.setState({
-                searchItems,
-                searchEmpty: searchItems.length === 0
+                searchItems: results.items,
+                searchEmpty: results.empty,
+                searchLoading: false
             });
         } catch (error) {
-            if (this._latestSearchQuery !== currentQuery) return;
-
             console.warn('Dashboard quick search failed:', error);
-            this.setState({ searchItems: [], searchEmpty: true });
-        } finally {
-            if (this._latestSearchQuery === currentQuery) {
-                this.setState({ searchLoading: false });
-            }
+            this.setState({ searchItems: [], searchEmpty: true, searchLoading: false });
         }
     }
 
-    /**
-     * Clears search query and result chips.
-     */
+    _resolveSearchQuery() {
+        return (this.alpine?.searchQuery ?? this.state?.searchQuery ?? '').trim();
+    }
+
     resetSearch() {
+        quickSearchWidget.cancel();
         this.setState({
             searchQuery: '',
             searchItems: [],
@@ -311,46 +300,26 @@ export class DashboardController extends BaseController {
         });
     }
 
-    _formatBeanChip(bean, query) {
-        const { beanName, type, contextId } = bean;
-        const meta = BeanMetadataRules.resolveBeanMetadata({ beanName, type });
-        return {
-            name: beanName,
-            highlightedName: BeanSearchEngine.highlight(beanName, query),
-            icon: meta.icon,
-            iconColor: meta.color,
-            contextId
-        };
-    }
-
-    /**
-     * Navigates to target route with search parameters.
-     */
     goTo(route, name, contextId) {
-        const paramKey = route === 'graph' ? 'focus' : 'search';
-        const params = { [paramKey]: name };
-        if (contextId) params.contextId = contextId;
-        const q = QueryParam.build(params).toString();
         this.resetSearch();
-        window.location.hash = `#/${route}?${q}`;
+        window.location.hash = quickSearchWidget.resolveTargetUrl(route, name, contextId);
     }
 
     // --- Definitions Chart & KPIs ---
-    updateDefinitionsData(data) {
-        if (!data) return;
-        this.summaryData = data;
-        const kpi = chartWidget.computeKpi(data);
-        const legend = chartWidget.computeLegend(data, this.state.chartMode);
+    updateDefinitionsData(beanDefinitionsData) {
+        this.summaryData = beanDefinitionsData;
+        const kpi = chartWidget.computeKpi(beanDefinitionsData);
+        const legend = chartWidget.computeLegend(beanDefinitionsData, this.state.chartMode);
 
-        chartWidget.renderChart(data, this.state.chartMode);
+        chartWidget.renderChart(beanDefinitionsData, this.state.chartMode);
 
         this.setState({
-            kpiDefinitionsCount: kpi.total,
-            kpiDefSingletons: kpi.singletons,
-            kpiDefPrototypes: kpi.prototypes,
-            chartTotalDefinitions: legend.total,
-            chartFooterInfo: legend.footerText,
-            chartLegendItems: legend.legendItems
+            chartFooterInfo         : legend.footerText,
+            kpiDefSingletons        : kpi.singletons,
+            kpiDefPrototypes        : kpi.prototypes,
+            chartLegendItems        : legend.legendItems,
+            kpiDefinitionsCount     : kpi.total,
+            chartTotalDefinitions   : legend.total,
         });
     }
 
@@ -361,65 +330,62 @@ export class DashboardController extends BaseController {
         if (this.summaryData) {
             const legend = chartWidget.setMode(mode);
             if (legend) {
-                updates.chartTotalDefinitions = legend.total;
-                updates.chartFooterInfo = legend.footerText;
-                updates.chartLegendItems = legend.legendItems;
+                updates.chartTotalDefinitions   = legend.total;
+                updates.chartFooterInfo         = legend.footerText;
+                updates.chartLegendItems        = legend.legendItems;
             }
         }
         this.setState(updates);
     }
 
     // --- Runtime Instances & Bottlenecks ---
-    updateInstancesData(data) {
-        if (!data) return;
-        this.instancesData = data;
-        const metrics = bottlenecksWidget.computeMetrics(data);
+    updateInstancesData(beanInstanceData) {
+        this.instancesData = beanInstanceData;
+        const metrics = bottlenecksWidget.computeMetrics(beanInstanceData);
 
         this.setState({
-            kpiInstancesCount: metrics.count,
-            kpiInstTotalCost: metrics.totalCost,
-            slowestBeans: metrics.slowestBeans,
-            slowestTotalCost: metrics.totalCost,
-            slowestMaxLatency: metrics.maxLatency,
-            slowestBeansLoading: false
+            kpiInstancesCount   : metrics.count,
+            kpiInstTotalCost    : metrics.totalCost,
+            slowestBeans        : metrics.slowestBeans,
+            slowestTotalCost    : metrics.totalCost,
+            slowestMaxLatency   : metrics.maxLatency,
+            slowestBeansLoading : false
         });
     }
 
     // --- Auto-Config Conditions ---
-    updateConditionsData(data) {
-        if (!data) return;
-        this.conditionsData = data;
-        const metrics = conditionsWidget.computeMetrics(data);
+    updateConditionsData(autoConfigConditionData) {
+        this.conditionsData = autoConfigConditionData;
+        const metrics = conditionsWidget.computeMetrics(autoConfigConditionData);
 
         this.setState({
-            kpiConditionsCount: metrics.total,
-            kpiCondMatched: metrics.matched,
-            kpiCondMatchedPct: metrics.matchedPct,
-            kpiCondSkipped: metrics.notMatched,
-            condMatchedLabel: metrics.matchedLabel,
-            condUnmatchedLabel: metrics.unmatchedLabel,
-            condMatchedPct: metrics.matchedPct,
-            condUnmatchedPct: metrics.notMatchedPct,
-            conditionsSamples: metrics.samples,
-            conditionsEvalCount: metrics.evaluatedCount
+            kpiConditionsCount  : metrics.total,
+            kpiCondMatched      : metrics.matched,
+            kpiCondMatchedPct   : metrics.matchedPct,
+            kpiCondSkipped      : metrics.notMatched,
+            condMatchedLabel    : metrics.matchedLabel,
+            condUnmatchedLabel  : metrics.unmatchedLabel,
+            condMatchedPct      : metrics.matchedPct,
+            condUnmatchedPct    : metrics.notMatchedPct,
+            conditionsSamples   : metrics.samples,
+            conditionsEvalCount : metrics.evaluatedCount
         });
     }
 
     // --- Dependency Topology & Hubs ---
-    updateDependenciesData(data) {
-        if (!data) return;
-        this.dependenciesData = data;
-        const metrics = hubsWidget.computeMetrics(data);
+    updateDependenciesData(dependencyGraphData) {
+        this.dependenciesData = dependencyGraphData;
+        const metrics = hubsWidget.computeMetrics(dependencyGraphData);
 
         this.setState({
-            kpiDependenciesCount: metrics.totalBeans,
-            kpiDepEdges: metrics.totalEdges,
-            kpiDepBeans: metrics.dependedBeans,
-            dependencyHubs: metrics.hubs,
-            dependencyGraphFooter: metrics.footerStats
+            kpiDependenciesCount    : metrics.totalBeans,
+            kpiDepEdges             : metrics.totalEdges,
+            kpiDepBeans             : metrics.dependedBeans,
+            dependencyHubs          : metrics.hubs,
+            dependencyGraphFooter   : metrics.footerStats
         });
 
-        radialTreeWidget.render(data, this.setState.bind(this));
+        radialTreeWidget.render(dependencyGraphData, this.setState.bind(this));
     }
 
     radialZoom(scaleFactor) {
@@ -438,17 +404,19 @@ export class DashboardController extends BaseController {
         };
         document.addEventListener('themechanged', themeHandler);
         this.addDisposable(() => document.removeEventListener('themechanged', themeHandler));
-
-        this.on('#btn-refresh-dashboard', 'click', () => this.reloadDashboardData());
     }
 
     async reloadDashboardData() {
         if (this.state.refreshing) return;
         this.setState({ refreshing: true });
+
         try {
-            await this.loadAllDashboardData();
+            await Promise.all([
+                this.loadAllDashboardData(),
+                new Promise(resolve => setTimeout(resolve, 600))
+            ]);
         } finally {
-            setTimeout(() => this.setState({ refreshing: false }), 600);
+            this.setState({ refreshing: false });
         }
     }
 }

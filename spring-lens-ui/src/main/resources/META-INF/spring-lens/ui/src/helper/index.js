@@ -19,7 +19,6 @@ export { default as beanDataStore } from './bean-data-store.js';
 export { default as GraphTreeBuilder } from './graph-tree-builder.js';
 
 // 5. Shared UI Presentation Components
-export { default as PageHeader } from './page-header.js';
 export { default as Pagination } from './pagination.js';
 export { default as Sidebar } from './sidebar.js';
 export { default as ToastNotification } from './toast-notification.js';

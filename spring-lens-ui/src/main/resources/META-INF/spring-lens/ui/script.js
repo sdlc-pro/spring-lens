@@ -1,11 +1,11 @@
 import { Route } from './src/core/router/route.js';
 import {
+    WhatsNewController,
+    InstanceController,
     DashboardController,
     DefinitionController,
-    ConditionalReportController,
-    InstanceController,
     DependencyGraphController,
-    WhatsNewController
+    ConditionalReportController,
 } from "./src/controller/index.js";
 
 $(document).ready(() => {

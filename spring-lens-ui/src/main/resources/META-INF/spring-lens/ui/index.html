@@ -12,7 +12,13 @@
     <script src="./src/lib/jquery-3.6.0.min.js"></script>
     <script defer src="./src/lib/alpine.min.js"></script>
     <script src="./src/config/tailwind.config.js"></script>
-    <script src="src/config/theme.config.js"></script>
+    <script>
+        {
+            const theme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', theme ? theme === 'dark' : prefersDark);
+        }
+    </script>
 </head>
 
 <body

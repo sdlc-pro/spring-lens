@@ -1,5 +1,5 @@
 export { default as BaseController } from '../base-controller.js';
-export { DashboardController, DashboardController as Dashboard, DashboardController as default } from './dashboard-controller.js';
+export { DashboardController, DashboardController as default } from './dashboard-controller.js';
 export { default as DashboardService } from './dashboard-service.js';
 export { default as heroWidget } from './hero-widget.js';
 export { default as chartWidget } from './definition-chart-widget.js';
