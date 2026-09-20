@@ -1,9 +1,9 @@
 import { BeanMetadataRules } from '../../helper/index.js';
 
 class DependencyHubsWidget {
-    computeMetrics(dependenciesResponse) {
-        const items = dependenciesResponse?.content ?? [];
-        const totalBeans = dependenciesResponse?.totalElements ?? items.length;
+    computeMetrics(dependencies) {
+        const items = dependencies?.content ?? [];
+        const totalBeans = dependencies?.totalElements ?? items.length;
 
         const dependentCounts = new Map();
         let totalEdges = 0;

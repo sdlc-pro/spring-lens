@@ -13,19 +13,47 @@ import {
 } from './index.js';
 
 export class DefinitionController extends BaseController {
+
+    static DEFAULT_FILTER_CRITERIA = Object.freeze({
+        contextId: '',
+        scope: '',
+        role: '',
+        primary: '',
+        lazyInit: ''
+    });
+
+    static DEFAULT_GRAPH_TOOLTIP = Object.freeze({
+        visible: false,
+        x: 0,
+        y: 0,
+        placement: 'bottom',
+        name: '',
+        type: '',
+        scope: '',
+        role: '',
+        kind: '',
+        kindClass: '',
+        meta: '',
+        loading: false
+    });
+
+    rawBeans = [];
+    summaryData = null;
+    _tableFetchSeq = 0;
+
     constructor() {
         super('definitions');
         this.service = container.make('definitionService');
         this.applicationState = container.make('applicationState');
-        this.chartsWidget = definitionChartsWidget;
-        this.tableWidget = definitionTableWidget;
-        this.sidebarWidget = definitionSidebarWidget;
-        this.modalWidget = definitionGraphModalWidget;
+
         this._wireModalWidget();
+        this.addDisposable(definitionChartsWidget);
 
-        this.addDisposable(this.chartsWidget);
+        this.state = this._initialState();
+    }
 
-        this.state = {
+    _initialState() {
+        return {
             appName: this.applicationState?.getAppName?.() || 'SpringLens',
             totalDefinitions: '--',
             contextDistributionList: [],
@@ -37,13 +65,7 @@ export class DefinitionController extends BaseController {
             summaryLoading: true,
 
             searchQuery: '',
-            filterCriteria: {
-                contextId: '',
-                scope: '',
-                role: '',
-                primary: '',
-                lazyInit: ''
-            },
+            filterCriteria: { ...DefinitionController.DEFAULT_FILTER_CRITERIA },
             itemsPerPage: 20,
             currentPage: 1,
             sortColumn: '',
@@ -75,97 +97,28 @@ export class DefinitionController extends BaseController {
             graphModalOpen: false,
             graphMode: 'lr',
             graphTargetBean: null,
-            graphTooltip: {
-                visible: false,
-                x: 0,
-                y: 0,
-                placement: 'bottom',
-                name: '',
-                type: '',
-                scope: '',
-                role: '',
-                kind: '',
-                kindClass: '',
-                meta: '',
-                loading: false
-            },
+            graphTooltip: { ...DefinitionController.DEFAULT_GRAPH_TOOLTIP },
             isExportingGraph: false,
             refreshing: false
         };
-
-        this.rawBeans = [];
-        this.summaryData = null;
-        this._tableFetchSeq = 0;
-
-        for (const key of Object.keys(this.state)) {
-            Object.defineProperty(this, key, {
-                get: () => (this.alpine ? this.alpine[key] : this.state[key]),
-                set: (value) => this.setState({ [key]: value }),
-                configurable: true,
-                enumerable: true,
-            });
-        }
-    }
-
-    bindAlpine(alpine) {
-        super.bindAlpine(alpine);
-        if (this.alpine?.filterCriteria && this.state?.filterCriteria) {
-            Object.assign(this.alpine.filterCriteria, this.state.filterCriteria);
-        }
-    }
-
-    setState(patch) {
-        if (!patch) return;
-        if ((!this.alpine || !this.alpine.$el?.isConnected) && typeof window !== 'undefined' && window.Alpine?.$data) {
-            const root = document.querySelector(`[x-data="${this.namespace}"]`) || document.querySelector('[x-data]');
-            if (root && root.isConnected) {
-                try {
-                    this.bindAlpine(window.Alpine.$data(root));
-                } catch (e) {
-                }
-            }
-        }
-        if (patch.filterCriteria && typeof patch.filterCriteria === 'object') {
-            this.state.filterCriteria = {
-                ...this.state.filterCriteria,
-                ...patch.filterCriteria
-            };
-            if (this.alpine?.filterCriteria) {
-                Object.assign(this.alpine.filterCriteria, patch.filterCriteria);
-            }
-        }
-        Object.assign(this.state, patch);
-        if (this.alpine) {
-            Object.assign(this.alpine, patch);
-        }
     }
 
     _wireModalWidget() {
-        this.modalWidget.onSelectBean = (beanName) => this.selectGraphNode(beanName);
-        this.modalWidget.onTooltipChange = (tooltip) => {
+        definitionGraphModalWidget.onSelectBean = (beanName) => this.selectGraphNode(beanName);
+        definitionGraphModalWidget.onTooltipChange = (tooltip) => {
             this.setState({
-                graphTooltip: { ...(this.state.graphTooltip || {}), ...tooltip }
+                graphTooltip: { ...this.state.graphTooltip, ...tooltip }
             });
         };
         if (this.service?.endpoints?.find) {
-            this.modalWidget.findBeanEndpoint = this.service.endpoints.find;
+            definitionGraphModalWidget.findBeanEndpoint = this.service.endpoints.find;
         }
     }
 
-    _defaultFilterCriteria() {
+    _getResetFilterState() {
         return {
-            contextId: '',
-            scope: '',
-            role: '',
-            primary: '',
-            lazyInit: ''
-        };
-    }
-
-    _resetFilterState() {
-        this.setState({
             searchQuery: '',
-            filterCriteria: this._defaultFilterCriteria(),
+            filterCriteria: { ...DefinitionController.DEFAULT_FILTER_CRITERIA },
             itemsPerPage: 20,
             currentPage: 1,
             sortColumn: '',
@@ -174,7 +127,11 @@ export class DefinitionController extends BaseController {
             selectedBeanName: null,
             selectedContextId: null,
             selectedBean: null
-        });
+        };
+    }
+
+    _resetFilterState() {
+        this.setState(this._getResetFilterState());
     }
 
     createAlpineState() {
@@ -242,97 +199,57 @@ export class DefinitionController extends BaseController {
         }
     }
 
-    async enter(params) {
-        await super.enter(params);
+    async enter(params, context) {
+        await super.enter(params, context);
 
-        try {
-            this._wireModalWidget();
-            this.closeSidebar();
-            this._resetFilterState();
-            this._bindEventListeners();
-            const { targetBean, targetContextId } = this._parseQueryParams(params);
+        this._wireModalWidget();
+        this.closeSidebar();
+        this._resetFilterState();
+        this._bindEventListeners();
 
-            if (this.applicationState?.onAppInfoChange) {
-                const unsub = this.applicationState.onAppInfoChange((info) => {
-                    if (info?.name) {
-                        this.setState({ appName: info.name });
-                    }
-                });
-                if (unsub) this.addDisposable(unsub);
-            }
+        const { targetBean, targetContextId } = this._parseQueryParams(params);
 
-            await Promise.allSettled([
-                this.fetchSummaryStatistics(),
-                this.fetchTableData()
-            ]);
+        await Promise.allSettled([
+            this.fetchBeanDefinitions(),
+            this.fetchBeanDefinitionSummary()
+        ]);
 
-            if (targetBean) {
-                await this._handleDeepLink(targetBean, targetContextId);
-            }
-        } catch (error) {
-            console.error('Error during Definitions enter:', error);
-            this.setState({
-                tableLoading: false,
-                tableError: error.message || 'Failed to initialize view'
-            });
+        if (targetBean) {
+            await this._handleDeepLink(targetBean, targetContextId);
         }
     }
 
     leave() {
-        this._tableFetchSeq++;
-        this.chartsWidget?.destroyCharts();
-        this.closeGraphModal();
-        this.closeSidebar();
-        this.summaryData = null;
         this.rawBeans = [];
+        this._tableFetchSeq++;
+        this.summaryData = null;
+        this.closeSidebar();
+        this.closeGraphModal();
         this._resetFilterState();
+        definitionChartsWidget.destroyCharts();
 
         super.leave();
     }
 
-    async fetchSummaryStatistics() {
+    async fetchBeanDefinitionSummary() {
         this.setState({ summaryLoading: true });
-        try {
-            const summary = await this.service.fetchSummary();
-            this.summaryData = summary;
 
-            if (summary) {
-                const metrics = this.chartsWidget.computeMetrics(summary);
-                this.setState({
-                    totalDefinitions: metrics.totalDefinitions,
-                    contextDistributionList: metrics.contextDistributionList,
-                    scopeLegend: metrics.scopeLegend,
-                    roleLegend: metrics.roleLegend,
-                    loadingModeLegend: metrics.loadingModeLegend,
-                    contextOptions: metrics.contextOptions,
-                    scopeOptions: metrics.scopeOptions,
-                    summaryLoading: false
-                });
+        const summary = await this.service.fetchBeanDefinitionSummary();
 
-                this.chartsWidget.renderCharts(summary);
-            } else {
-                this.setState({ summaryLoading: false });
-            }
-        } catch (error) {
-            console.error('Error fetching summary statistics:', error);
-            this.setState({
-                summaryLoading: false,
-                totalDefinitions: '-'
-            });
-        }
+        this.summaryData = summary;
+        const metrics = definitionChartsWidget.computeMetrics(summary);
+        this.setState({ ...metrics, summaryLoading: false });
+        definitionChartsWidget.renderCharts(summary);
     }
 
     _buildTableQuery() {
-        const pageNumber = Math.max(0, (this.currentPage || 1) - 1);
-        const pageSize = Number(this.itemsPerPage) || 20;
-
         return {
-            pageNumber,
-            pageSize,
-            sortColumn: this.sortColumn || '',
-            sortDirection: this.sortDirection || 'asc',
-            filterCriteria: this.filterCriteria || {},
-            searchQuery: this.searchQuery || ''
+            pageNumber     : Math.max(0, (this.state.currentPage || 1) - 1),
+            pageSize       : Number(this.state.itemsPerPage) || 20,
+            sortBy         : this.state.sortColumn,
+            sortDir        : (this.state.sortDirection || 'asc').toUpperCase(),
+            search         : this.state.searchQuery?.trim(),
+            filterCriteria : this.alpine?.filterCriteria || this.state.filterCriteria || {}
         };
     }
 
@@ -342,54 +259,36 @@ export class DefinitionController extends BaseController {
         beanDataStore.addBeans(content);
 
         this.setState({
-            beans: this.tableWidget.formatBeanRows(content),
+            beans: definitionTableWidget.formatBeanRows(content),
             currentPage: pagination.pageNumber + 1,
             itemsPerPage: pagination.pageSize,
             pagination,
             pageButtons,
             paginationInfo,
-            tableLoading: false
+            tableLoading: false,
+            tableError: response ? null : 'Failed to load bean definitions'
         });
     }
 
-    async fetchTableData() {
+    async fetchBeanDefinitions() {
         this.setState({ tableLoading: true, tableError: null });
         const seq = ++this._tableFetchSeq;
+        const query = this._buildTableQuery();
 
-        try {
-            const query = this._buildTableQuery();
-            const response = await this.service.fetchTableData(query);
+        const response = await this.service.fetchBeanDefinitions(query);
 
-            if (seq === this._tableFetchSeq) {
-                this._applyTableResponse(response, query.pageNumber, query.pageSize);
-            }
-        } catch (error) {
-            if (seq === this._tableFetchSeq) {
-                console.error('Error fetching bean definitions table data:', error);
-                this.setState({
-                    tableLoading: false,
-                    tableError: error.message || 'Error loading bean definitions'
-                });
-            }
+        if (seq === this._tableFetchSeq) {
+            this._applyTableResponse(response, query.pageNumber, query.pageSize);
         }
     }
 
     async selectBean(beanOrName, contextId = null, preloadedBean = null) {
         if (!beanOrName) return false;
 
-        let beanName;
-        let ctxId;
-        let preloaded;
-
-        if (typeof beanOrName === 'object') {
-            beanName = beanOrName.beanName || beanOrName.raw?.beanName;
-            ctxId = beanOrName.contextId !== undefined ? beanOrName.contextId : (beanOrName.raw?.contextId || '');
-            preloaded = beanOrName.raw || beanOrName;
-        } else {
-            beanName = beanOrName;
-            ctxId = contextId;
-            preloaded = preloadedBean;
-        }
+        const isObject = typeof beanOrName === 'object';
+        const beanName = isObject ? (beanOrName.beanName || beanOrName.raw?.beanName) : beanOrName;
+        const ctxId = isObject ? (beanOrName.contextId ?? beanOrName.raw?.contextId ?? '') : contextId;
+        const preloaded = isObject ? (beanOrName.raw || beanOrName) : preloadedBean;
 
         return this.selectBeanByNameAndContextId(beanName, ctxId, preloaded);
     }
@@ -397,10 +296,7 @@ export class DefinitionController extends BaseController {
     async selectBeanByNameAndContextId(beanName, contextId = null, preloadedBean = null) {
         if (!beanName) return false;
 
-        const resolvedContextId = (contextId !== null && contextId !== undefined)
-            ? contextId
-            : (this.selectedContextId || '');
-
+        const resolvedContextId = contextId ?? this.state.selectedContextId ?? '';
         const bean = await this._resolveBean(beanName, resolvedContextId, preloadedBean);
         if (!bean) return false;
 
@@ -408,7 +304,7 @@ export class DefinitionController extends BaseController {
         this.setState({ sidebarTab: 'properties' });
 
         if (!Array.isArray(bean.dependencies) || !Array.isArray(bean.dependents)) {
-            this._refreshBeanDetails(bean.beanName, resolvedContextId);
+            await this._refreshBeanDetails(bean.beanName, resolvedContextId);
         }
 
         return true;
@@ -417,56 +313,48 @@ export class DefinitionController extends BaseController {
     async _resolveBean(beanName, contextId, preloadedBean = null) {
         if (preloadedBean) return preloadedBean;
 
-        const targetId = this.tableWidget.generateBeanUniqueId(contextId, beanName);
-        const local = this.rawBeans.find(b => this.tableWidget.generateBeanUniqueId(b) === targetId || (b.beanName === beanName && (!contextId || b.contextId === contextId)))
+        const targetId = definitionTableWidget.generateBeanUniqueId(contextId, beanName);
+        const local = this.rawBeans.find(b => definitionTableWidget.generateBeanUniqueId(b) === targetId || (b.beanName === beanName && (!contextId || b.contextId === contextId)))
             || beanDataStore.findBeanByName(beanName, contextId);
         if (local) return local;
 
-        try {
-            const remote = await this.service.findBeanDefinition(beanName, contextId);
-            if (remote) beanDataStore.addBeans([remote]);
-            return remote;
-        } catch (err) {
-            console.warn(`Could not load definition details for ${beanName}:`, err);
-            return null;
-        }
+        const remote = await this.service.fetchBeanDefinitionDetails(beanName, contextId);
+        if (remote) beanDataStore.addBeans([remote]);
+        return remote;
     }
 
     _applySelectedBean(bean, contextId) {
-        const details = this.sidebarWidget.formatDetails(bean);
+        const details = definitionSidebarWidget.formatDetails(bean);
         const resolvedContextId = contextId ?? bean.contextId ?? '';
         this.setState({
-            selectedBeanId: this.tableWidget.generateBeanUniqueId(resolvedContextId, bean.beanName),
+            selectedBeanId: definitionTableWidget.generateBeanUniqueId(resolvedContextId, bean.beanName),
             selectedBeanName: bean.beanName,
             selectedContextId: resolvedContextId,
             selectedBean: bean,
             selectedBeanMeta: details?.meta || { icon: 'schema', color: '#8b5cf6' },
             selectedBeanFormatted: details,
-            sidebarDeps: this.sidebarWidget.formatDependencyItems(bean.dependencies || [], resolvedContextId),
-            sidebarDependents: this.sidebarWidget.formatDependencyItems(bean.dependents || [], resolvedContextId),
+            sidebarDeps: definitionSidebarWidget.formatDependencyItems(bean.dependencies || [], resolvedContextId),
+            sidebarDependents: definitionSidebarWidget.formatDependencyItems(bean.dependents || [], resolvedContextId),
             sidebarOpen: true
         });
     }
 
     async _refreshBeanDetails(beanName, contextId) {
-        try {
-            const fresh = await this.service.findBeanDefinition(beanName, contextId);
-            const targetId = this.tableWidget.generateBeanUniqueId(contextId, beanName);
-            if (fresh && this.selectedBeanId === targetId) {
-                beanDataStore.addBeans([fresh]);
-                this._applySelectedBean(fresh, contextId);
-            }
-        } catch {
+        const fresh = await this.service.fetchBeanDefinitionDetails(beanName, contextId);
+        const targetId = definitionTableWidget.generateBeanUniqueId(contextId, beanName);
+        if (fresh && this.state.selectedBeanId === targetId) {
+            beanDataStore.addBeans([fresh]);
+            this._applySelectedBean(fresh, contextId);
         }
     }
 
     isSelected(bean) {
-        if (!bean || !this.selectedBeanId) return false;
+        if (!bean || !this.state.selectedBeanId) return false;
         if (typeof bean === 'string') {
-            return bean === this.selectedBeanId || bean === this.selectedBeanName;
+            return bean === this.state.selectedBeanId || bean === this.state.selectedBeanName;
         }
-        const id = bean.uniqueId || this.tableWidget.generateBeanUniqueId(bean);
-        return id === this.selectedBeanId;
+        const id = bean.uniqueId || definitionTableWidget.generateBeanUniqueId(bean);
+        return id === this.state.selectedBeanId;
     }
 
     closeSidebar() {
@@ -488,7 +376,7 @@ export class DefinitionController extends BaseController {
         const success = await this.selectBeanByNameAndContextId(dependencyOrDependentName, this.state.selectedContextId);
         if (!success) {
             ToastNotification.show({
-                title: 'Dependency Not Found',
+                title: 'Dependency details Not Found',
                 message: `The bean <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${dependencyOrDependentName}</strong> is referenced, but its definition could not be located in the application context.`,
                 type: 'warning',
                 duration: 4500
@@ -496,77 +384,56 @@ export class DefinitionController extends BaseController {
         }
     }
 
+    _updateTableQuery(patch = {}, resetPage = true) {
+        if (resetPage) patch.currentPage = 1;
+        this.setState(patch);
+        return this.fetchBeanDefinitions();
+    }
+
     onSearchInput(event) {
         const query = (event?.target?.value ?? this.alpine?.searchQuery ?? this.state?.searchQuery ?? '').trim();
-        this.setState({
-            searchQuery: query,
-            currentPage: 1
-        });
-        this.fetchTableData();
+        this._updateTableQuery({ searchQuery: query });
     }
 
     clearSearch() {
-        this.setState({
-            searchQuery: '',
-            currentPage: 1
-        });
-        this.fetchTableData();
+        this._updateTableQuery({ searchQuery: '' });
     }
 
     onFilterChange() {
-        this.setState({ currentPage: 1 });
-        this.fetchTableData();
+        this._updateTableQuery();
     }
 
     onPageSizeChange(event) {
         const newSize = Number(event?.target?.value ?? this.alpine?.itemsPerPage ?? this.state?.itemsPerPage ?? 20);
-        this.setState({
-            itemsPerPage: newSize,
-            currentPage: 1
-        });
-        this.fetchTableData();
+        this._updateTableQuery({ itemsPerPage: newSize });
     }
 
     resetFilters() {
-        this._resetFilterState();
-        this.fetchTableData();
+        this._updateTableQuery(this._getResetFilterState());
     }
 
     sort(column) {
         if (!column) return;
-        let direction = 'asc';
-        if (this.state.sortColumn === column) {
-            direction = this.state.sortDirection === 'asc' ? 'desc' : 'asc';
-        }
-        this.setState({
-            sortColumn: column,
-            sortDirection: direction,
-            currentPage: 1
-        });
-        this.fetchTableData();
+        const direction = (this.state.sortColumn === column && this.state.sortDirection === 'asc') ? 'desc' : 'asc';
+        this._updateTableQuery({ sortColumn: column, sortDirection: direction });
     }
 
     getSortIcon(column) {
-        return this.tableWidget.getSortIcon(column, this.state.sortColumn, this.state.sortDirection);
+        return definitionTableWidget.getSortIcon(column, this.state.sortColumn, this.state.sortDirection);
     }
 
     prevPage() {
-        if (!this.pagination.isFirstPage) {
-            this.goToPage(this.currentPage - 1);
-        }
+        if (!this.state.pagination.isFirstPage) this.goToPage(this.state.currentPage - 1);
     }
 
     nextPage() {
-        if (!this.pagination.isLastPage) {
-            this.goToPage(this.currentPage + 1);
-        }
+        if (!this.state.pagination.isLastPage) this.goToPage(this.state.currentPage + 1);
     }
 
     goToPage(page) {
         const targetPage = Number(page);
         if (!targetPage || targetPage === this.state.currentPage) return;
-        this.setState({ currentPage: targetPage });
-        this.fetchTableData();
+        this._updateTableQuery({ currentPage: targetPage }, false);
     }
 
     async openGraphModal() {
@@ -574,18 +441,18 @@ export class DefinitionController extends BaseController {
 
         let beanData = this.state.selectedBean;
         if (!beanData || !beanData.dependencies) {
-            beanData = await this.service.findBeanDefinition(this.state.selectedBeanName, this.state.selectedContextId);
+            beanData = await this.service.fetchBeanDefinitionDetails(this.state.selectedBeanName, this.state.selectedContextId);
         }
 
         if (beanData) {
             this._wireModalWidget();
-            this.modalWidget.contextId = this.state.selectedContextId;
+            definitionGraphModalWidget.contextId = this.state.selectedContextId;
             this.setState({
                 graphModalOpen: true,
                 graphTargetBean: beanData,
                 graphMode: 'lr'
             });
-            await this.modalWidget.open(beanData);
+            await definitionGraphModalWidget.open(beanData);
         }
     }
 
@@ -595,62 +462,56 @@ export class DefinitionController extends BaseController {
             isExportingGraph: false,
             graphTooltip: { ...(this.state.graphTooltip || {}), visible: false }
         });
-        this.modalWidget.close();
+        definitionGraphModalWidget.close();
     }
 
     setGraphMode(mode) {
         this.setState({ graphMode: mode });
-        this.modalWidget.setMode(mode);
+        definitionGraphModalWidget.setMode(mode);
     }
 
     graphZoomIn() {
-        this.modalWidget.zoom(1.25);
+        definitionGraphModalWidget.zoom(1.25);
     }
 
     graphZoomOut() {
-        this.modalWidget.zoom(0.8);
+        definitionGraphModalWidget.zoom(0.8);
     }
 
     graphFitView() {
-        this.modalWidget.fitView();
+        definitionGraphModalWidget.fitView();
     }
 
     async exportModalGraph() {
         if (this.state.isExportingGraph || !this.state.graphTargetBean) return;
 
         this.setState({ isExportingGraph: true });
-        try {
-            const blob = await this.modalWidget.exportPNG({ pixelRatio: 2 });
-            if (!blob) return;
 
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const beanName = this.state.graphTargetBean?.beanName || 'bean';
-            const contextSuffix = this.state.graphTargetBean?.contextId ? `-${this.state.graphTargetBean.contextId}` : '';
-            const filename = `spring-lens-bean-${beanName}${contextSuffix}-graph-${timestamp}.png`;
-
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = filename;
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        } catch (error) {
+        const blob = await definitionGraphModalWidget.exportPNG({ pixelRatio: 2 }).catch(error => {
             console.error('Failed to export modal graph as PNG:', error);
-        } finally {
-            this.setState({ isExportingGraph: false });
+            return null;
+        });
+
+        if (blob) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const bean = this.state.graphTargetBean;
+            const contextSuffix = bean?.contextId ? `-${bean.contextId}` : '';
+            const filename = `spring-lens-bean-${bean?.beanName || 'bean'}${contextSuffix}-graph-${timestamp}.png`;
+
+            DomUtils.downloadBlob(filename, blob);
         }
+
+        this.setState({ isExportingGraph: false });
     }
 
     async selectGraphNode(beanName) {
         if (!beanName) return;
 
-        const success = await this.selectBeanByNameAndContextId(beanName, this.selectedContextId);
-        if (success && this.selectedBean) {
-            this.modalWidget.contextId = this.selectedContextId;
-            this.setState({ graphTargetBean: this.selectedBean });
-            await this.modalWidget.open(this.selectedBean);
+        const success = await this.selectBeanByNameAndContextId(beanName, this.state.selectedContextId);
+        if (success && this.state.selectedBean) {
+            definitionGraphModalWidget.contextId = this.state.selectedContextId;
+            this.setState({ graphTargetBean: this.state.selectedBean });
+            await definitionGraphModalWidget.open(this.state.selectedBean);
         } else if (!success) {
             ToastNotification.show({
                 title: 'Bean Definition Not Found',
@@ -663,14 +524,11 @@ export class DefinitionController extends BaseController {
 
     async refreshData() {
         this.setState({ refreshing: true });
-        try {
-            await Promise.allSettled([
-                this.fetchSummaryStatistics(),
-                this.fetchTableData()
-            ]);
-        } finally {
-            setTimeout(() => this.setState({ refreshing: false }), 500);
-        }
+        await Promise.allSettled([
+            this.fetchBeanDefinitions(),
+            this.fetchBeanDefinitionSummary()
+        ]);
+        setTimeout(() => this.setState({ refreshing: false }), 500);
     }
 
     exportData() {
@@ -688,25 +546,17 @@ export class DefinitionController extends BaseController {
     _bindEventListeners() {
         const themeHandler = (event) => {
             const isDark = event.detail?.theme === 'dark';
-            this.chartsWidget?.onThemeChanged(isDark);
+            definitionChartsWidget.onThemeChanged(isDark);
             if (this.state.graphModalOpen && this.state.graphTargetBean) {
-                this.modalWidget?.render(this.state.graphTargetBean);
+                definitionGraphModalWidget.render(this.state.graphTargetBean);
             }
         };
         document.addEventListener('themechanged', themeHandler);
         this.addDisposable(() => document.removeEventListener('themechanged', themeHandler));
 
-        const keydownHandler = (e) => {
-            if (e.key === 'Escape') {
-                if (this.state.graphModalOpen) {
-                    e.stopPropagation();
-                    this.closeGraphModal();
-                } else if (this.state.sidebarOpen) {
-                    this.closeSidebar();
-                }
-            }
-        };
-        document.addEventListener('keydown', keydownHandler);
-        this.addDisposable(() => document.removeEventListener('keydown', keydownHandler));
+        const unsub = this.applicationState?.onAppInfoChange?.((info) => {
+            if (info?.name) this.setState({ appName: info.name });
+        });
+        if (unsub) this.addDisposable(unsub);
     }
 }

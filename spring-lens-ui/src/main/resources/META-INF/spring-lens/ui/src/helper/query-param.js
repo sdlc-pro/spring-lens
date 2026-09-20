@@ -2,6 +2,11 @@ export default class QueryParam {
 
     static build(rawParams) {
         if (!rawParams) return new URLSearchParams();
+        if (rawParams instanceof URLSearchParams) return rawParams;
+        if (typeof rawParams === 'string') {
+            const queryStr = rawParams.startsWith('?') ? rawParams.slice(1) : rawParams;
+            return new URLSearchParams(queryStr);
+        }
 
         const cleanEntries = Object.entries(rawParams).filter(
             ([_, value]) =>
@@ -32,5 +37,13 @@ export default class QueryParam {
             }
         }
         return null;
+    }
+
+    static append(url, params) {
+        if (!params) return url;
+        const query = this.build(params).toString();
+        if (!query) return url;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}${query}`;
     }
 }

@@ -11,15 +11,16 @@ import {
 } from './index.js';
 
 export class ConditionalReportController extends BaseController {
+
+    rawConditions = [];
+    conditionReportMetrics = null;
+    _tableFetchSeq = 0;
+
     constructor() {
         super('conditionReports');
 
         this.service = container.make('conditionService');
         this.applicationState = container.make('applicationState');
-        this.kpiWidget = conditionKpiWidget;
-        this.tabsWidget = conditionTabsWidget;
-        this.tableWidget = conditionTableWidget;
-        this.detailWidget = conditionDetailWidget;
 
         this.state = {
             appName: this.applicationState?.getAppName?.() || 'SpringLens',
@@ -57,32 +58,12 @@ export class ConditionalReportController extends BaseController {
             refreshing: false
         };
 
-        this.rawConditions = [];
-        this.conditionReportMetrics = null;
-        this._tableFetchSeq = 0;
-
-        for (const key of Object.keys(this.state)) {
-            Object.defineProperty(this, key, {
-                get: () => (this.alpine ? this.alpine[key] : this.state[key]),
-                set: (value) => this.setState({ [key]: value }),
-                configurable: true,
-                enumerable: true,
-            });
-        }
-
         this._debouncedSearch = AsyncUtils.debounce(() => {
-            this.currentPage = 1;
-            this.fetchConditionEvaluationData().then(r => {});
+            this.setState({ currentPage: 1 });
+            this.fetchConditionEvaluationData().then(() => {});
         }, 200);
 
         this.addDisposable(this._debouncedSearch);
-    }
-
-    setState(patch) {
-        Object.assign(this.state, patch);
-        if (this.alpine) {
-            Object.assign(this.alpine, patch);
-        }
     }
 
     createAlpineState() {
@@ -111,7 +92,7 @@ export class ConditionalReportController extends BaseController {
     }
 
     _resetFilterState() {
-        const tabCounts = this.tabsWidget.computeTabCounts(this.conditionReportMetrics, '', null);
+        const tabCounts = conditionTabsWidget.computeTabCounts(this.conditionReportMetrics, '', null);
         this.setState({
             currentPage: 1,
             pageSize: 10,
@@ -135,7 +116,7 @@ export class ConditionalReportController extends BaseController {
     }
 
     async enter(params, context = null) {
-        await super.enter(params);
+        await super.enter(params, context);
 
         try {
             this.closeDetail();
@@ -143,18 +124,21 @@ export class ConditionalReportController extends BaseController {
 
             const queryParams = QueryParam.parse(params);
             const targetCondition = QueryParam.get(queryParams, 'search', 'condition');
-            const targetContextId = QueryParam.get(queryParams, 'contextId', 'context');
             const outcome = QueryParam.get(queryParams, 'outcome');
 
+            const patch = {};
             if (targetCondition) {
-                this.searchQuery = targetCondition;
+                patch.searchQuery = targetCondition;
                 const $searchInput = document.getElementById('condition-search-input');
                 if ($searchInput) {
                     $searchInput.value = targetCondition;
                 }
             }
             if (outcome) {
-                this.outcomeFilter = outcome;
+                patch.outcomeFilter = outcome;
+            }
+            if (Object.keys(patch).length > 0) {
+                this.setState(patch);
             }
 
             this._bindEventListeners();
@@ -190,8 +174,8 @@ export class ConditionalReportController extends BaseController {
             const conditionReportSummary = await this.service.fetchConditionalSummary();
             this.conditionReportMetrics = conditionReportSummary || {};
 
-            const kpi = this.kpiWidget.computeMetrics(this.conditionReportMetrics);
-            const tabCounts = this.tabsWidget.computeTabCounts(
+            const kpi = conditionKpiWidget.computeMetrics(this.conditionReportMetrics);
+            const tabCounts = conditionTabsWidget.computeTabCounts(
                 this.conditionReportMetrics,
                 this.state.searchQuery,
                 this.state.searchTotalCount
@@ -216,7 +200,7 @@ export class ConditionalReportController extends BaseController {
     }
 
     _updateFormattedRows() {
-        const rows = this.tableWidget.formatTableRows(this.rawConditions, {
+        const rows = conditionTableWidget.formatTableRows(this.rawConditions, {
             groupBy: this.state.groupBy,
             selectedCondition: this.state.selectedCondition,
             detailViewStyle: this.state.detailViewStyle,
@@ -238,7 +222,7 @@ export class ConditionalReportController extends BaseController {
         if (this.state.searchQuery) {
             if (!this.state.outcomeFilter) {
                 const totalElements = pagination.totalElements;
-                const tabCounts = this.tabsWidget.computeTabCounts(
+                const tabCounts = conditionTabsWidget.computeTabCounts(
                     this.conditionReportMetrics,
                     this.state.searchQuery,
                     totalElements
@@ -250,7 +234,7 @@ export class ConditionalReportController extends BaseController {
             } else if (this.state.searchTotalCount === null) {
                 this.service.fetchSearchTotalCount(this.state.searchQuery).then(count => {
                     if (count !== null) {
-                        const tabCounts = this.tabsWidget.computeTabCounts(
+                        const tabCounts = conditionTabsWidget.computeTabCounts(
                             this.conditionReportMetrics,
                             this.state.searchQuery,
                             count
@@ -270,7 +254,7 @@ export class ConditionalReportController extends BaseController {
                     this.conditionReportMetrics.totalConditionSources = pagination.totalElements;
                 }
             }
-            const tabCounts = this.tabsWidget.computeTabCounts(
+            const tabCounts = conditionTabsWidget.computeTabCounts(
                 this.conditionReportMetrics,
                 '',
                 null
@@ -283,7 +267,7 @@ export class ConditionalReportController extends BaseController {
             });
         }
 
-        const rows = this.tableWidget.formatTableRows(content, {
+        const rows = conditionTableWidget.formatTableRows(content, {
             groupBy: this.state.groupBy,
             selectedCondition: this.state.selectedCondition,
             detailViewStyle: this.state.detailViewStyle,
@@ -344,7 +328,7 @@ export class ConditionalReportController extends BaseController {
 
         const selectedCondition = { contextId, source };
         const localMatch = this.rawConditions.find(c => c.source === source && (c.contextId || '') === contextId) || rowOrItem.raw || rowOrItem;
-        const localDetails = localMatch ? this.detailWidget.formatDetails(localMatch) : null;
+        const localDetails = localMatch ? conditionDetailWidget.formatDetails(localMatch) : null;
 
         this.setState({
             selectedCondition,
@@ -355,7 +339,7 @@ export class ConditionalReportController extends BaseController {
         try {
             const detailed = await this.service.findConditionEvaluation(contextId, source);
             if (detailed && this.state.selectedCondition?.source === source && (this.state.selectedCondition?.contextId || '') === contextId) {
-                const formatted = this.detailWidget.formatDetails(detailed);
+                const formatted = conditionDetailWidget.formatDetails(detailed);
                 this.setState({
                     selectedConditionDetails: formatted
                 });
@@ -427,7 +411,7 @@ export class ConditionalReportController extends BaseController {
     }
 
     getSortIcon(column) {
-        return this.tableWidget.getSortIcon(this.state.sortBy, this.state.sortDir, column);
+        return conditionTableWidget.getSortIcon(this.state.sortBy, this.state.sortDir, column);
     }
 
     prevPage() {
@@ -453,7 +437,7 @@ export class ConditionalReportController extends BaseController {
         const query = (event?.target?.value ?? this.state.searchQuery ?? '').trim();
         if (!query) {
             this._debouncedSearch?.cancel?.();
-            const tabCounts = this.tabsWidget.computeTabCounts(this.conditionReportMetrics, '', null);
+            const tabCounts = conditionTabsWidget.computeTabCounts(this.conditionReportMetrics, '', null);
             this.setState({
                 searchQuery: '',
                 searchTotalCount: null,
@@ -479,7 +463,7 @@ export class ConditionalReportController extends BaseController {
 
     clearSearch() {
         this._debouncedSearch?.cancel?.();
-        const tabCounts = this.tabsWidget.computeTabCounts(this.conditionReportMetrics, '', null);
+        const tabCounts = conditionTabsWidget.computeTabCounts(this.conditionReportMetrics, '', null);
         this.setState({
             searchQuery: '',
             searchTotalCount: null,

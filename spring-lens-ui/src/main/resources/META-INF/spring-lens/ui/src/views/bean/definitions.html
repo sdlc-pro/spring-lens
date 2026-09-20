@@ -593,6 +593,7 @@
 
         <!-- Right Sidebar - Bean Details Slide-Over Inspector -->
         <div :class="sidebarOpen ? 'w-[380px] max-w-[380px] opacity-100 mr-0 border' : 'w-0 max-w-0 opacity-0 pointer-events-none -mr-6 border-0'"
+            @keydown.escape.window="if (sidebarOpen && !graphModalOpen) closeSidebar()" 
             class="transition-all duration-300 ease-in-out bg-white dark:bg-slate-900 border-gray-200/80 dark:border-slate-800 rounded-2xl shadow-lg flex flex-col flex-shrink-0 sticky top-0 h-full max-h-full overflow-hidden"
             id="def-details-sidebar">
 

@@ -4,9 +4,9 @@ import container from '../../core/container.js';
 
 export class WhatsNewController extends BaseController {
 
-    constructor(endpoints, applicationState, containerInstance) {
+    constructor() {
         super('whatsNew');
-        this.applicationState = applicationState || container.make('applicationState');
+        this.applicationState = container.make('applicationState');
 
         this.state = {
             appName: this.applicationState?.getAppName?.() || 'SpringLens',
@@ -19,93 +19,20 @@ export class WhatsNewController extends BaseController {
             activeModalImage: null,
             activeModalTitle: ''
         };
-
-        for (const key of Object.keys(this.state)) {
-            Object.defineProperty(this, key, {
-                get: () => (this.alpine ? this.alpine[key] : this.state[key]),
-                set: (value) => this.setState({ [key]: value }),
-                configurable: true,
-                enumerable: true,
-            });
-        }
-
-        if (typeof window !== 'undefined' && window.Alpine?.data) {
-            window.Alpine.data('whatsNew', () => this.createAlpineState());
-        }
-    }
-
-    setState(patch) {
-        if (!patch) return;
-        Object.assign(this.state, patch);
-        if (this.alpine) {
-            Object.assign(this.alpine, patch);
-        }
     }
 
     createAlpineState() {
-        const self = this;
         return {
             ...this.state,
-            setFilter(category) {
-                this.activeFilter = category;
-                self.setFilter(category);
-            },
-            setSearchQuery(query) {
-                this.searchQuery = query || '';
-                self.setSearchQuery(query);
-            },
-            resetSearch() {
-                this.searchQuery = '';
-                this.activeFilter = 'all';
-                self.resetSearch();
-            },
-            goTo(route) {
-                self.goTo(route);
-            },
-            openImageModal(src, title) {
-                this.activeModalImage = src;
-                this.activeModalTitle = title || '';
-                self.openImageModal(src, title);
-            },
-            closeImageModal() {
-                this.activeModalImage = null;
-                this.activeModalTitle = '';
-                self.closeImageModal();
-            },
-            isFeatureVisible(feature) {
-                const active = this.activeFilter || 'all';
-                const matchesCategory = active === 'all' || feature.category === active;
-                if (!matchesCategory) return false;
-
-                const query = (this.searchQuery || '').trim().toLowerCase();
-                if (!query) return true;
-
-                const inTitle = feature.title?.toLowerCase().includes(query);
-                const inDescription = feature.description?.toLowerCase().includes(query);
-                const inCategory = feature.category?.toLowerCase().includes(query);
-                const inTags = feature.tags?.some(tag => tag.toLowerCase().includes(query));
-                const inPoints = feature.points?.some(point => point.toLowerCase().includes(query));
-
-                return Boolean(inTitle || inDescription || inCategory || inTags || inPoints);
-            },
-            isHeroVisible(hero) {
-                if (this.activeFilter !== 'all') return false;
-
-                const query = (this.searchQuery || '').trim().toLowerCase();
-                if (!query) return true;
-
-                const inTitle = hero.title?.toLowerCase().includes(query);
-                const inDescription = hero.description?.toLowerCase().includes(query);
-                const inTags = hero.tags?.some(tag => tag.toLowerCase().includes(query));
-                const inHighlights = hero.highlights?.some(hl => hl.toLowerCase().includes(query));
-
-                return Boolean(inTitle || inDescription || inTags || inHighlights);
-            },
-            hasVisibleContent(release) {
-                const hasVisibleHero = this.isHeroVisible(release.hero);
-                const hasVisibleFeatures = release.features.some(feature => this.isFeatureVisible(feature));
-                return hasVisibleHero || hasVisibleFeatures;
-            }
+            setFilter: (category) => this.setFilter(category),
+            setSearchQuery: (query) => this.setSearchQuery(query),
+            resetSearch: () => this.resetSearch(),
+            goTo: (route) => this.goTo(route),
+            openImageModal: (src, title) => this.openImageModal(src, title),
+            closeImageModal: () => this.closeImageModal(),
+            isFeatureVisible: (feature) => this.isFeatureVisible(feature),
+            isHeroVisible: (hero) => this.isHeroVisible(hero),
+            hasVisibleContent: (release) => this.hasVisibleContent(release)
         };
     }
 

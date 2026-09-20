@@ -27,15 +27,15 @@ const PRESET_BOTTLENECK_THRESHOLDS = [
 ];
 
 export class InstanceController extends BaseController {
+
+    instances = [];
+    instanceSummary = null;
+
     constructor() {
         super('instances');
 
         this.service = container.make('instanceService');
         this.applicationState = container.make('applicationState');
-        this.kpiWidget = instanceKpiWidget;
-        this.tableWidget = instanceTableWidget;
-        this.waterfallWidget = instanceWaterfallWidget;
-        this.sidebarWidget = instanceSidebarWidget;
 
         const savedThreshold = parseInt(localStorage.getItem('sl-bottleneck-threshold-nanos'), 10);
         const bottleneckThreshold = Number.isFinite(savedThreshold) && savedThreshold > 0 ? savedThreshold : 500000;
@@ -49,7 +49,7 @@ export class InstanceController extends BaseController {
 
         this.state = {
             appName: this.applicationState?.getAppName?.() || 'SpringLens',
-            kpi: this.kpiWidget.formatSummary(null),
+            kpi: instanceKpiWidget.formatSummary(null),
             summaryLoading: true,
 
             searchQuery: '',
@@ -108,28 +108,8 @@ export class InstanceController extends BaseController {
             }
         };
 
-        this.instances = [];
-        this.instanceSummary = null;
-
-        for (const key of Object.keys(this.state)) {
-            Object.defineProperty(this, key, {
-                get: () => (this.alpine ? this.alpine[key] : this.state[key]),
-                set: (value) => this.setState({ [key]: value }),
-                configurable: true,
-                enumerable: true
-            });
-        }
-
         this._debouncedSearch = AsyncUtils.debounce(() => this._resetPageAndFetch(), 250);
         this.addDisposable(this._debouncedSearch);
-    }
-
-    setState(patch) {
-        if (!patch) return;
-        Object.assign(this.state, patch);
-        if (this.alpine) {
-            Object.assign(this.alpine, patch);
-        }
     }
 
     createAlpineState() {
@@ -176,7 +156,8 @@ export class InstanceController extends BaseController {
         };
     }
 
-    async enter(params) {
+    async enter(params, context = null) {
+        await super.enter(params, context);
         try {
             this._resetFilterState();
             this.closeSidebar();
@@ -187,7 +168,7 @@ export class InstanceController extends BaseController {
             const targetContextId = QueryParam.get(queryParams, 'contextId', 'context');
 
             if (targetBean) {
-                this.searchQuery = targetBean;
+                this.setState({ searchQuery: targetBean });
             }
 
             this.on(document, 'keydown', (e) => {
@@ -197,7 +178,7 @@ export class InstanceController extends BaseController {
                 }
             });
 
-            await Promise.all([
+            await Promise.allSettled([
                 this.fetchSummaryData(),
                 this.fetchInstanceData()
             ]);
@@ -219,7 +200,7 @@ export class InstanceController extends BaseController {
             const summaryData = await this.service.fetchSummaryData();
             this.instanceSummary = summaryData;
             this.setState({
-                kpi: this.kpiWidget.formatSummary(summaryData),
+                kpi: instanceKpiWidget.formatSummary(summaryData),
                 summaryLoading: false
             });
         } catch (error) {
@@ -235,11 +216,11 @@ export class InstanceController extends BaseController {
 
         try {
             const responseData = await this.service.fetchInstanceData({
-                pageNumber: this.currentPage - 1,
-                pageSize: this.pageSize,
-                search: this.searchQuery,
-                sortBy: this.sortBy,
-                sortDir: this.sortDir
+                pageNumber: Math.max(0, (this.state.currentPage || 1) - 1),
+                pageSize: this.state.pageSize || 20,
+                search: this.state.searchQuery || '',
+                sortBy: this.state.sortBy || 'createdAt',
+                sortDir: this.state.sortDir || 'ASC'
             });
 
             const content = Array.isArray(responseData?.content) ? responseData.content : [];
@@ -253,7 +234,7 @@ export class InstanceController extends BaseController {
             const totalElements = responseData?.totalElements ?? this.instances.length;
             const totalPages = Math.max(1, responseData?.totalPages ?? 1);
             const pageNumber = responseData?.pageNumber ?? 0;
-            const pageSize = responseData?.pageSize ?? this.pageSize;
+            const pageSize = responseData?.pageSize ?? this.state.pageSize ?? 20;
 
             const paginationState = {
                 totalElements,
@@ -320,7 +301,7 @@ export class InstanceController extends BaseController {
             pagination
         } = this.state;
 
-        const ganttRows = this.waterfallWidget.formatGanttRows(
+        const ganttRows = instanceWaterfallWidget.formatGanttRows(
             this.instances,
             selectedBeanName,
             selectedContextId,
@@ -329,7 +310,7 @@ export class InstanceController extends BaseController {
             bottleneckThresholdNanos
         );
 
-        const tableRows = this.tableWidget.formatTableRows(
+        const tableRows = instanceTableWidget.formatTableRows(
             this.instances,
             selectedBeanName,
             selectedContextId,
@@ -337,7 +318,7 @@ export class InstanceController extends BaseController {
             bottleneckThresholdNanos
         );
 
-        const rulerTicks = this.waterfallWidget.calculateTicks(maxTimeMs);
+        const rulerTicks = instanceWaterfallWidget.calculateTicks(maxTimeMs);
         const totalElements = pagination?.totalElements || 0;
         const remaining = Math.max(0, totalElements - this.instances.length);
         const hasMoreGantt = remaining > 0;
@@ -358,39 +339,43 @@ export class InstanceController extends BaseController {
             pageButtons
         });
 
-        if (this.selectedBeanName && this.sidebarOpen) {
-            const currentInst = this.instances.find(i => i.beanName === this.selectedBeanName && (!this.selectedContextId || i.contextId === this.selectedContextId));
+        if (this.state.selectedBeanName && this.state.sidebarOpen) {
+            const currentInst = this.instances.find(i => i.beanName === this.state.selectedBeanName && (!this.state.selectedContextId || i.contextId === this.state.selectedContextId));
             if (currentInst) {
                 this.setState({
-                    sidebarDetails: this.sidebarWidget.formatDetails(currentInst, maxDurationNanos, bottleneckThresholdNanos)
+                    sidebarDetails: instanceSidebarWidget.formatDetails(currentInst, maxDurationNanos, bottleneckThresholdNanos)
                 });
             }
         }
     }
 
     onSearchInput(event) {
-        this.searchQuery = (event.target.value || '').trim();
+        this.setState({ searchQuery: (event.target.value || '').trim() });
         this._debouncedSearch();
     }
 
     clearSearch() {
-        this._debouncedSearch.cancel();
-        this.searchQuery = '';
+        this._debouncedSearch?.cancel?.();
+        this.setState({ searchQuery: '' });
         this._resetPageAndFetch();
     }
 
     onSortCreatedChange(event) {
         const val = event.target.value;
         if (val) {
-            this.sortBy = 'createdAt';
-            this.sortDir = val;
-            this.sortCreated = val;
-            this.sortDuration = '';
+            this.setState({
+                sortBy: 'createdAt',
+                sortDir: val,
+                sortCreated: val,
+                sortDuration: ''
+            });
         } else {
-            this.sortBy = 'createdAt';
-            this.sortDir = 'ASC';
-            this.sortCreated = '';
-            this.sortDuration = '';
+            this.setState({
+                sortBy: 'createdAt',
+                sortDir: 'ASC',
+                sortCreated: '',
+                sortDuration: ''
+            });
         }
         this._resetPageAndFetch();
     }
@@ -398,15 +383,19 @@ export class InstanceController extends BaseController {
     onSortDurationChange(event) {
         const val = event.target.value;
         if (val) {
-            this.sortBy = 'initDurationNanos';
-            this.sortDir = val;
-            this.sortDuration = val;
-            this.sortCreated = '';
+            this.setState({
+                sortBy: 'initDurationNanos',
+                sortDir: val,
+                sortDuration: val,
+                sortCreated: ''
+            });
         } else {
-            this.sortBy = 'createdAt';
-            this.sortDir = 'ASC';
-            this.sortDuration = '';
-            this.sortCreated = 'ASC';
+            this.setState({
+                sortBy: 'createdAt',
+                sortDir: 'ASC',
+                sortDuration: '',
+                sortCreated: 'ASC'
+            });
         }
         this._resetPageAndFetch();
     }
@@ -419,34 +408,30 @@ export class InstanceController extends BaseController {
         }
 
         const nanos = parseInt(val, 10);
-        if (Number.isFinite(nanos) && nanos > 0) {
-            this.bottleneckThresholdNanos = nanos;
-        }
+        const threshold = (Number.isFinite(nanos) && nanos > 0) ? nanos : this.state.bottleneckThresholdNanos;
 
-        localStorage.setItem('sl-bottleneck-threshold-nanos', this.bottleneckThresholdNanos);
-        const legendTexts = this._buildLegendTexts(this.bottleneckThresholdNanos);
+        localStorage.setItem('sl-bottleneck-threshold-nanos', threshold);
+        const legendTexts = this._buildLegendTexts(threshold);
 
         this.setState({
-            bottleneckThresholdNanos: this.bottleneckThresholdNanos,
-            customBottleneckThresholdNanos: this.customBottleneckThresholdNanos,
-            bottleneckOptions: this.bottleneckOptions,
+            bottleneckThresholdNanos: threshold,
             ...legendTexts
         });
 
         this.updatePresentationModels();
 
         if (event?.target) {
-            event.target.value = String(this.bottleneckThresholdNanos);
+            event.target.value = String(threshold);
             setTimeout(() => {
                 if (event?.target) {
-                    event.target.value = String(this.bottleneckThresholdNanos);
+                    event.target.value = String(threshold);
                 }
             }, 0);
         }
     }
 
     openCustomThresholdModal() {
-        const nanos = this.bottleneckThresholdNanos || 500000;
+        const nanos = this.state.bottleneckThresholdNanos || 500000;
         let value = '750';
         let unit = 'us';
 
@@ -492,7 +477,7 @@ export class InstanceController extends BaseController {
         this.setState({ customThresholdModalOpen: false });
         const select = document.getElementById('time-filter-bottleneck');
         if (select) {
-            select.value = String(this.bottleneckThresholdNanos);
+            select.value = String(this.state.bottleneckThresholdNanos);
         }
     }
 
@@ -575,22 +560,21 @@ export class InstanceController extends BaseController {
 
         const parsedNanos = preview.nanos;
         const isPreset = PRESET_BOTTLENECK_THRESHOLDS.some(p => p.nanos === parsedNanos);
-        this.bottleneckThresholdNanos = parsedNanos;
-        this.customBottleneckThresholdNanos = isPreset ? null : parsedNanos;
-        this.bottleneckOptions = this._buildBottleneckOptions(this.customBottleneckThresholdNanos);
+        const customNanos = isPreset ? null : parsedNanos;
+        const bottleneckOptions = this._buildBottleneckOptions(customNanos);
 
         if (!isPreset) {
-            localStorage.setItem('sl-custom-bottleneck-threshold-nanos', this.customBottleneckThresholdNanos);
+            localStorage.setItem('sl-custom-bottleneck-threshold-nanos', customNanos);
         }
-        localStorage.setItem('sl-bottleneck-threshold-nanos', this.bottleneckThresholdNanos);
+        localStorage.setItem('sl-bottleneck-threshold-nanos', parsedNanos);
 
-        const legendTexts = this._buildLegendTexts(this.bottleneckThresholdNanos);
+        const legendTexts = this._buildLegendTexts(parsedNanos);
 
         this.setState({
             customThresholdModalOpen: false,
-            bottleneckThresholdNanos: this.bottleneckThresholdNanos,
-            customBottleneckThresholdNanos: this.customBottleneckThresholdNanos,
-            bottleneckOptions: this.bottleneckOptions,
+            bottleneckThresholdNanos: parsedNanos,
+            customBottleneckThresholdNanos: customNanos,
+            bottleneckOptions,
             ...legendTexts
         });
 
@@ -598,9 +582,9 @@ export class InstanceController extends BaseController {
 
         const select = document.getElementById('time-filter-bottleneck');
         if (select) {
-            select.value = String(this.bottleneckThresholdNanos);
+            select.value = String(parsedNanos);
             setTimeout(() => {
-                if (select) select.value = String(this.bottleneckThresholdNanos);
+                if (select) select.value = String(parsedNanos);
             }, 0);
         }
     }
@@ -662,9 +646,9 @@ export class InstanceController extends BaseController {
     }
 
     onPageSizeChange(event) {
-        this.pageSize = parseInt(event.target.value, 10) || 20;
-        this.currentPage = 1;
-        this._resetPageAndFetch();
+        const pageSize = parseInt(event.target.value, 10) || 20;
+        this.setState({ pageSize, currentPage: 1 });
+        this.fetchInstanceData();
     }
 
     resetFilters() {
@@ -681,9 +665,7 @@ export class InstanceController extends BaseController {
             ? savedCustom
             : (!isPreset ? bottleneckThreshold : null);
 
-        this.customBottleneckThresholdNanos = customThreshold;
-        this.bottleneckOptions = this._buildBottleneckOptions(customThreshold);
-        this.bottleneckThresholdNanos = bottleneckThreshold;
+        const bottleneckOptions = this._buildBottleneckOptions(customThreshold);
         const legendTexts = this._buildLegendTexts(bottleneckThreshold);
 
         this.setState({
@@ -694,7 +676,7 @@ export class InstanceController extends BaseController {
             sortDir: 'ASC',
             bottleneckThresholdNanos: bottleneckThreshold,
             customBottleneckThresholdNanos: customThreshold,
-            bottleneckOptions: this.bottleneckOptions,
+            bottleneckOptions,
             ...legendTexts,
             pageSize: 20,
             currentPage: 1,
@@ -703,30 +685,36 @@ export class InstanceController extends BaseController {
     }
 
     _resetPageAndFetch() {
-        this.currentPage = 1;
+        this.setState({ currentPage: 1 });
         return this.fetchInstanceData();
     }
 
     switchView(view) {
-        if (this.activeView === view) return;
+        if (this.state.activeView === view) return;
         this.setState({ activeView: view });
         this.closeSidebar();
         this.closeBottomPreview();
     }
 
     toggleSort() {
-        if (this.sortBy === 'createdAt') {
-            this.sortBy = 'initDurationNanos';
-            this.sortDir = 'DESC';
-            this.sortDuration = 'DESC';
-            this.sortCreated = '';
+        if (this.state.sortBy === 'createdAt') {
+            this.setState({
+                sortBy: 'initDurationNanos',
+                sortDir: 'DESC',
+                sortDuration: 'DESC',
+                sortCreated: '',
+                currentPage: 1
+            });
         } else {
-            this.sortBy = 'createdAt';
-            this.sortDir = 'ASC';
-            this.sortCreated = 'ASC';
-            this.sortDuration = '';
+            this.setState({
+                sortBy: 'createdAt',
+                sortDir: 'ASC',
+                sortCreated: 'ASC',
+                sortDuration: '',
+                currentPage: 1
+            });
         }
-        this._resetPageAndFetch();
+        this.fetchInstanceData();
     }
 
     setZoom(level) {
@@ -735,11 +723,11 @@ export class InstanceController extends BaseController {
     }
 
     zoomIn() {
-        this.setZoom(this.zoomLevel + 0.5);
+        this.setZoom(this.state.zoomLevel + 0.5);
     }
 
     zoomOut() {
-        this.setZoom(this.zoomLevel - 0.5);
+        this.setZoom(this.state.zoomLevel - 0.5);
     }
 
     zoomReset() {
@@ -755,7 +743,7 @@ export class InstanceController extends BaseController {
         const scrollContainerEl = document.getElementById('instance-scroll-container');
         if (!innerEl || !scrollContainerEl) return;
 
-        const result = this.waterfallWidget.calculateScrubber(event.pageX, innerEl, scrollContainerEl, this.maxTimeMs);
+        const result = instanceWaterfallWidget.calculateScrubber(event.pageX, innerEl, scrollContainerEl, this.state.maxTimeMs);
         if (result) {
             this.setState({ scrubber: result });
         }
@@ -771,50 +759,54 @@ export class InstanceController extends BaseController {
     }
 
     async loadMore() {
-        if (this.currentPage < this.pagination.totalPages) {
-            this.currentPage++;
+        if (this.state.currentPage < this.state.pagination.totalPages) {
+            this.setState({ currentPage: this.state.currentPage + 1 });
             await this.fetchInstanceData(true);
         }
     }
 
     sort(column) {
         if (!column) return;
-        if (this.sortBy === column) {
-            this.sortDir = this.sortDir === 'ASC' ? 'DESC' : 'ASC';
-        } else {
-            this.sortBy = column;
-            this.sortDir = 'ASC';
+        let direction = 'ASC';
+        if (this.state.sortBy === column) {
+            direction = this.state.sortDir === 'ASC' ? 'DESC' : 'ASC';
         }
 
-        if (this.sortBy === 'createdAt') {
-            this.sortCreated = this.sortDir;
-            this.sortDuration = '';
-        } else if (this.sortBy === 'initDurationNanos') {
-            this.sortDuration = this.sortDir;
-            this.sortCreated = '';
+        const patch = {
+            sortBy: column,
+            sortDir: direction,
+            currentPage: 1
+        };
+
+        if (column === 'createdAt') {
+            patch.sortCreated = direction;
+            patch.sortDuration = '';
+        } else if (column === 'initDurationNanos') {
+            patch.sortDuration = direction;
+            patch.sortCreated = '';
         } else {
-            this.sortCreated = '';
-            this.sortDuration = '';
+            patch.sortCreated = '';
+            patch.sortDuration = '';
         }
 
-        this.currentPage = 1;
+        this.setState(patch);
         this.fetchInstanceData();
     }
 
     getSortIcon(column) {
-        return this.tableWidget.getSortIcon(column, this.sortBy, this.sortDir);
+        return instanceTableWidget.getSortIcon(column, this.state.sortBy, this.state.sortDir);
     }
 
     prevPage() {
-        if (!this.pagination.isFirstPage && this.currentPage > 1) {
-            this.currentPage--;
+        if (!this.state.pagination.isFirstPage && this.state.currentPage > 1) {
+            this.setState({ currentPage: this.state.currentPage - 1 });
             this.fetchInstanceData();
         }
     }
 
     nextPage() {
-        if (!this.pagination.isLastPage && this.currentPage < this.pagination.totalPages) {
-            this.currentPage++;
+        if (!this.state.pagination.isLastPage && this.state.currentPage < this.state.pagination.totalPages) {
+            this.setState({ currentPage: this.state.currentPage + 1 });
             this.fetchInstanceData();
         }
     }
@@ -822,8 +814,8 @@ export class InstanceController extends BaseController {
     goToPage(page) {
         if (!page) return;
         const target = parseInt(page, 10);
-        if (!Number.isNaN(target) && target !== this.currentPage && target >= 1 && target <= this.pagination.totalPages) {
-            this.currentPage = target;
+        if (!Number.isNaN(target) && target !== this.state.currentPage && target >= 1 && target <= this.state.pagination.totalPages) {
+            this.setState({ currentPage: target });
             this.fetchInstanceData();
         }
     }
@@ -832,7 +824,7 @@ export class InstanceController extends BaseController {
         if (!beanName) return;
 
         const resolvedContext = contextId || 'root';
-        const isGantt = source === 'gantt' || (!source && this.activeView === 'instance');
+        const isGantt = source === 'gantt' || (!source && this.state.activeView === 'instance');
 
         if (isGantt) {
             this.setState({
@@ -860,12 +852,12 @@ export class InstanceController extends BaseController {
 
         const localInst = this.instances.find(i => i.beanName === beanName && (!contextId || i.contextId === contextId)) || { beanName, contextId: resolvedContext };
         this.setState({
-            sidebarDetails: this.sidebarWidget.formatDetails(localInst, this.maxDurationNanos, this.bottleneckThresholdNanos)
+            sidebarDetails: instanceSidebarWidget.formatDetails(localInst, this.state.maxDurationNanos, this.state.bottleneckThresholdNanos)
         });
 
         this.updatePresentationModels();
 
-        const isCurrentSelection = () => this.selectedBeanName === beanName && this.selectedContextId === resolvedContext;
+        const isCurrentSelection = () => this.state.selectedBeanName === beanName && this.state.selectedContextId === resolvedContext;
 
         const fetchDetailsPromise = (async () => {
             try {
@@ -873,7 +865,7 @@ export class InstanceController extends BaseController {
                 if (details && isCurrentSelection()) {
                     this.setState({
                         selectedInstance: details,
-                        sidebarDetails: this.sidebarWidget.formatDetails(details, this.maxDurationNanos, this.bottleneckThresholdNanos)
+                        sidebarDetails: instanceSidebarWidget.formatDetails(details, this.state.maxDurationNanos, this.state.bottleneckThresholdNanos)
                     });
                 }
             } catch (err) {
@@ -887,7 +879,7 @@ export class InstanceController extends BaseController {
                 const proxyInfo = await this.service.fetchProxyInfo(resolvedContext, beanName);
                 if (isCurrentSelection()) {
                     this.setState({
-                        proxyInfo: this.sidebarWidget.formatProxyInfo(proxyInfo),
+                        proxyInfo: instanceSidebarWidget.formatProxyInfo(proxyInfo),
                         proxyLoading: false
                     });
                 }
@@ -895,7 +887,7 @@ export class InstanceController extends BaseController {
                 console.warn('Failed to fetch proxy info:', err);
                 if (isCurrentSelection()) {
                     this.setState({
-                        proxyInfo: this.sidebarWidget.formatProxyInfo(null),
+                        proxyInfo: instanceSidebarWidget.formatProxyInfo(null),
                         proxyLoading: false
                     });
                 }
@@ -909,7 +901,7 @@ export class InstanceController extends BaseController {
         this.setState({
             sidebarOpen: false
         });
-        if (this.activeView === 'table') {
+        if (this.state.activeView === 'table') {
             this.setState({
                 selectedBeanName: null,
                 selectedContextId: null,
@@ -927,7 +919,7 @@ export class InstanceController extends BaseController {
             bottomPreviewOpen: false,
             bottomPreviewExpanded: false
         });
-        if (this.activeView === 'instance') {
+        if (this.state.activeView === 'instance') {
             this.setState({
                 selectedBeanName: null,
                 selectedContextId: null,
@@ -944,7 +936,7 @@ export class InstanceController extends BaseController {
     }
 
     async copyBeanName(name) {
-        const text = name || this.selectedBeanName;
+        const text = name || this.state.selectedBeanName;
         if (!text) return;
         try {
             await navigator.clipboard.writeText(text);
@@ -963,8 +955,8 @@ export class InstanceController extends BaseController {
         const details = this.state.sidebarDetails;
         const proxy = this.state.proxyInfo;
         const payload = {
-            beanName: this.selectedBeanName,
-            contextId: this.selectedContextId,
+            beanName: this.state.selectedBeanName,
+            contextId: this.state.selectedContextId,
             details,
             proxy
         };
@@ -972,7 +964,7 @@ export class InstanceController extends BaseController {
             await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
             ToastNotification.show({
                 title: 'Copied Telemetry JSON',
-                message: `Telemetry metadata for "${this.selectedBeanName}" copied to clipboard.`,
+                message: `Telemetry metadata for "${this.state.selectedBeanName}" copied to clipboard.`,
                 type: 'sweet',
                 duration: 2500
             });
@@ -993,14 +985,14 @@ export class InstanceController extends BaseController {
             ((prev?.initDurationNanos || 0) > (current?.initDurationNanos || 0)) ? prev : current
             , null);
         if (slowest) {
-            this.selectBean(slowest.beanName, slowest.contextId, this.activeView === 'instance' ? 'gantt' : 'table');
+            this.selectBean(slowest.beanName, slowest.contextId, this.state.activeView === 'instance' ? 'gantt' : 'table');
         }
     }
 
     async refreshData() {
         this.setState({ refreshing: true });
         try {
-            await Promise.all([
+            await Promise.allSettled([
                 this.fetchSummaryData(),
                 this.fetchInstanceData()
             ]);
@@ -1016,10 +1008,10 @@ export class InstanceController extends BaseController {
             appName: 'Spring Lens',
             reportType: 'Bean Instances Telemetry',
             timestamp: new Date().toISOString(),
-            bottleneckThreshold: Formatter.formatDuration(this.bottleneckThresholdNanos),
-            bottleneckThresholdNanos: this.bottleneckThresholdNanos,
+            bottleneckThreshold: Formatter.formatDuration(this.state.bottleneckThresholdNanos),
+            bottleneckThresholdNanos: this.state.bottleneckThresholdNanos,
             summary: this.instanceSummary,
-            totalElements: this.pagination.totalElements,
+            totalElements: this.state.pagination.totalElements,
             instances: this.instances
         };
 

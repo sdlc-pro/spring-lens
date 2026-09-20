@@ -9,9 +9,12 @@ import {
     ToastNotification,
     AsyncUtils
 } from './index.js';
-import {container} from "../../helper/index.js";
+import { container, DomUtils } from "../../helper/index.js";
 
 export class DependencyGraphController extends BaseController {
+
+    root = null;
+    selectedNodeRef = null;
 
     constructor() {
         super('dependencyGraph');
@@ -52,15 +55,6 @@ export class DependencyGraphController extends BaseController {
             errorMessage: null
         };
 
-        for (const key of Object.keys(this.state)) {
-            Object.defineProperty(this, key, {
-                get: () => (this.alpine ? this.alpine[key] : this.state[key]),
-                set: (value) => this.setState({ [key]: value }),
-                configurable: true,
-                enumerable: true,
-            });
-        }
-
         this.pathTracer = new GraphPathTracer({
             onStateChange: () => this._renderCanvas()
         });
@@ -84,30 +78,19 @@ export class DependencyGraphController extends BaseController {
 
         this.searchWidget = new GraphSearchWidget(this.service, {
             getRootNode: () => this.root,
-            getSelectedContextId: () => this.selectedContextId
+            getSelectedContextId: () => this.state.selectedContextId
         });
 
         this.addDisposable(this.canvasWidget);
         this.addDisposable(this.searchWidget);
         this.addDisposable(this.sidebarWidget);
 
-        this.root = null;
-        this.selectedNodeRef = null;
-
         this._debouncedSearch = AsyncUtils.debounce(async (query) => {
             const results = await this.searchWidget.search(query, 12);
-            if (this.searchQuery.trim() === query.trim()) {
+            if ((this.state.searchQuery || '').trim() === query.trim()) {
                 this.setState({ searchSuggestions: results, isSearching: false });
             }
         }, 180);
-    }
-
-    setState(patch) {
-        if (!patch) return;
-        Object.assign(this.state, patch);
-        if (this.alpine) {
-            Object.assign(this.alpine, patch);
-        }
     }
 
     createAlpineState() {
@@ -214,7 +197,8 @@ export class DependencyGraphController extends BaseController {
         return this.service.endpoints?.find;
     }
 
-    async enter(params) {
+    async enter(params, context = null) {
+        await super.enter(params, context);
         this._bindCustomEventHandlers();
 
         if (!this._initializeCanvas()) return;
@@ -264,7 +248,7 @@ export class DependencyGraphController extends BaseController {
     }
 
     _renderInitialGraph() {
-        this.canvasWidget.setMode(this.mode, false);
+        this.canvasWidget.setMode(this.state.mode, false);
         this.update(null, null, 0);
         this.fitView(0);
     }
@@ -307,7 +291,7 @@ export class DependencyGraphController extends BaseController {
         this._populateContextFilter(listOfBeans);
         this.root = GraphHierarchyBuilder.buildHierarchy(
             listOfBeans,
-            this.selectedContextId,
+            this.state.selectedContextId,
             (node) => this._calculateNodeWidth(node)
         );
     }
@@ -356,7 +340,6 @@ export class DependencyGraphController extends BaseController {
         this.setState({ isLoadingMore: true });
 
         try {
-            // 1. Capture currently expanded nodes to preserve branch state
             const expandedKeys = new Set();
             if (this.root) {
                 this.root.eachBefore(node => {
@@ -367,17 +350,12 @@ export class DependencyGraphController extends BaseController {
                 });
             }
 
-            // 2. Fetch incremental batch from API using pageNumber & pageSize
             const result = await this.service.fetchMoreBeans(batchSize, (progress) => {
                 this._updateProgressBadge(progress);
             });
 
-            const newlyLoadedCount = result?.newBeans?.length ?? 0;
-
-            // 3. Rebuild hierarchy and inject new beans
             this._buildHierarchyFromDependencies();
 
-            // 4. Restore expanded branch states
             if (this.root && expandedKeys.size > 0) {
                 this.root.eachBefore(node => {
                     const key = `${node.data?.contextId || ''}::${node.data?.fullName || node.data?.name || ''}`;
@@ -390,10 +368,7 @@ export class DependencyGraphController extends BaseController {
                 });
             }
 
-            // 5. Update counts
             this._updateTotalBeanCount();
-
-            // 6. Smooth canvas update
             this.update(null, null, 400);
         } catch (error) {
             console.error('Error loading more beans into graph:', error);
@@ -461,14 +436,7 @@ export class DependencyGraphController extends BaseController {
             const modeSuffix = fullTree ? 'full-tree' : 'viewport';
             const filename = `spring-lens-graph${contextSuffix}-${modeSuffix}-${timestamp}.png`;
 
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            DomUtils.downloadBlob(filename, blob);
         } catch (err) {
             console.error('Error exporting graph as PNG:', err);
         } finally {
@@ -478,7 +446,7 @@ export class DependencyGraphController extends BaseController {
 
     _getExtraCanvasConfig() {
         return {
-            isHighlightPathActive: this.isHighlightPathActive,
+            isHighlightPathActive: this.state.isHighlightPathActive,
             selectedNodeRef: this.selectedNodeRef,
             isNodeHighlighted: (node) => this.pathTracer.isNodeInActivePath(node),
             isLinkHighlighted: (link) => this.pathTracer.isLinkInActivePath(link)
@@ -513,7 +481,7 @@ export class DependencyGraphController extends BaseController {
     }
 
     toggleHighlightPath() {
-        const nextState = !this.isHighlightPathActive;
+        const nextState = !this.state.isHighlightPathActive;
         this.pathTracer.isHighlightPathActive = nextState;
         this.setState({ isHighlightPathActive: nextState });
 
@@ -578,7 +546,7 @@ export class DependencyGraphController extends BaseController {
     async focusOnBean(fullName, contextId = '', openSidebar = false) {
         if (!fullName) return;
 
-        if (contextId && this.selectedContextId && this.selectedContextId !== contextId) {
+        if (contextId && this.state.selectedContextId && this.state.selectedContextId !== contextId) {
             this.setState({ selectedContextId: contextId });
             const beans = this.service.accumulatedBeans.length > 0 ? this.service.accumulatedBeans : null;
             this._buildHierarchyFromDependencies(beans);
@@ -608,7 +576,7 @@ export class DependencyGraphController extends BaseController {
                     this.update(null, this.root);
                 }
 
-                const isTopBottom = this.mode === 'tb';
+                const isTopBottom = this.state.mode === 'tb';
                 const { x: nodeX, y: nodeY } = targetNode;
                 const targetX = isTopBottom ? nodeX : nodeY;
                 const targetY = isTopBottom ? nodeY : nodeX;
@@ -649,7 +617,7 @@ export class DependencyGraphController extends BaseController {
                     this.updateZoomPercent(zoomScale);
                 }
 
-                if (this.isHighlightPathActive) {
+                if (this.state.isHighlightPathActive) {
                     this.highlightPathForNode(targetNode);
                 }
             } else {
@@ -664,7 +632,7 @@ export class DependencyGraphController extends BaseController {
 
     async selectNodeAndShowDetails(selectedHierarchyNode, beanDetails) {
         this.selectedNodeRef = selectedHierarchyNode;
-        if (this.isHighlightPathActive) this.highlightPathForNode(selectedHierarchyNode);
+        if (this.state.isHighlightPathActive) this.highlightPathForNode(selectedHierarchyNode);
 
         const { fullName, meta } = selectedHierarchyNode.data ?? {};
         const { dependencies = [], dependents = [] } = beanDetails ?? {};
@@ -693,7 +661,7 @@ export class DependencyGraphController extends BaseController {
 
         if (typeof beanDetailsOrName === 'string') {
             const beanName = beanDetailsOrName;
-            contextId = typeof hierarchyNodeOrContextId === 'string' ? hierarchyNodeOrContextId : (this.selectedContextId || '');
+            contextId = typeof hierarchyNodeOrContextId === 'string' ? hierarchyNodeOrContextId : (this.state.selectedContextId || '');
             hierarchyNode = this.root ? this.findNodeInTree(this.root, beanName, contextId) : null;
             const fetched = await this.fetchBeanDetails(contextId, beanName);
             beanDetails = fetched || { beanName, contextId };
@@ -731,7 +699,7 @@ export class DependencyGraphController extends BaseController {
             const targetNode = hierarchyNode || this.findNodeInTree(this.root, beanDetails.beanName, contextId);
             if (targetNode) {
                 this.markNodeAsFocused(targetNode);
-                if (this.isHighlightPathActive) {
+                if (this.state.isHighlightPathActive) {
                     this.highlightPathForNode(targetNode);
                 }
             }
@@ -758,7 +726,7 @@ export class DependencyGraphController extends BaseController {
 
     selectDependency(dep) {
         const fullName = typeof dep === 'string' ? dep : dep?.fullName;
-        const contextId = typeof dep === 'object' && dep.contextId ? dep.contextId : (this.selectedContextId || '');
+        const contextId = typeof dep === 'object' && dep.contextId ? dep.contextId : (this.state.selectedContextId || '');
         if (!fullName) return;
 
         this.focusOnBean(fullName, contextId, false);
@@ -800,7 +768,7 @@ export class DependencyGraphController extends BaseController {
     }
 
     onSearchInput(event) {
-        const query = (event?.target?.value ?? this.searchQuery ?? '').trim();
+        const query = (event?.target?.value ?? this.state.searchQuery ?? '').trim();
         this.setState({ searchQuery: event?.target?.value ?? '' });
 
         if (!query) {
@@ -825,12 +793,12 @@ export class DependencyGraphController extends BaseController {
 
     onSearchEnter() {
         this._debouncedSearch?.flush();
-        if (this.searchSuggestions && this.searchSuggestions.length > 0) {
-            this.selectSuggestion(this.searchSuggestions[0]);
+        if (this.state.searchSuggestions && this.state.searchSuggestions.length > 0) {
+            this.selectSuggestion(this.state.searchSuggestions[0]);
         } else {
-            const query = (this.searchQuery || '').trim();
+            const query = (this.state.searchQuery || '').trim();
             if (query) {
-                this.focusOnBean(query, this.selectedContextId, false);
+                this.focusOnBean(query, this.state.selectedContextId, false);
                 this.closeSuggestions();
             }
         }
@@ -923,10 +891,10 @@ export class DependencyGraphController extends BaseController {
 
         if (isComplete) {
             setTimeout(() => {
-                if (this.chunkProgress.state === 'complete') {
+                if (this.state.chunkProgress.state === 'complete') {
                     this.setState({
                         chunkProgress: {
-                            ...this.chunkProgress,
+                            ...this.state.chunkProgress,
                             visible: false
                         }
                     });
