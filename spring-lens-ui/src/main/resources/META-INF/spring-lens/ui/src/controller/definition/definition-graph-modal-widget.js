@@ -38,6 +38,14 @@ export default class DefinitionGraphModalWidget {
         this._windowCleanup = null;
     }
 
+    get isReady() {
+        return Boolean(this.canvas && this.ctx);
+    }
+
+    get hasNodes() {
+        return this.modalGraphNodes.length > 0;
+    }
+
     initCanvas() {
         const canvasElem = document.getElementById('modal-tree-canvas');
         if (!canvasElem) return false;
@@ -139,15 +147,6 @@ export default class DefinitionGraphModalWidget {
     }
 
     async open(targetBean) {
-        if (!targetBean) return;
-
-        this.hoveredNode = null;
-        this.isDragging = false;
-        this.hideTooltip();
-        this.targetBean = targetBean;
-        if (targetBean.contextId) {
-            this.contextId = targetBean.contextId;
-        }
         this.render(targetBean);
         await this._prefetchRelatedBeans(targetBean);
     }
@@ -159,15 +158,12 @@ export default class DefinitionGraphModalWidget {
     }
 
     render(targetBean) {
-        if (!targetBean) return;
         this.hoveredNode = null;
         this.isDragging = false;
         this.hideTooltip();
         this.initCanvas();
         this.targetBean = targetBean;
-        if (targetBean.contextId) {
-            this.contextId = targetBean.contextId;
-        }
+        this.contextId = targetBean?.contextId || this.contextId;
 
         const rawData = GraphTreeBuilder.buildModalGraphHierarchy(
             targetBean,
@@ -178,11 +174,10 @@ export default class DefinitionGraphModalWidget {
         this.resize();
         this.renderCurrent();
         requestAnimationFrame(() => this.fitView());
-        this._prefetchRelatedBeans(targetBean);
     }
 
     renderCurrent() {
-        if (!this.ctx || !this.canvas) return;
+        if (!this.isReady) return;
 
         const isDark = document.documentElement.classList.contains('dark');
 
@@ -210,7 +205,7 @@ export default class DefinitionGraphModalWidget {
     }
 
     fitView() {
-        if (!this.canvas || !this.d3Zoom || !this.modalGraphNodes || this.modalGraphNodes.length === 0) return;
+        if (!this.isReady || !this.d3Zoom || !this.hasNodes) return;
 
         const width = this.width || 800;
         const height = this.height || 500;
@@ -276,7 +271,7 @@ export default class DefinitionGraphModalWidget {
     }
 
     async exportPNG({ pixelRatio = 2 } = {}) {
-        if (!this.modalGraphNodes || this.modalGraphNodes.length === 0) return null;
+        if (!this.hasNodes) return null;
 
         const isDark = document.documentElement.classList.contains('dark');
         const bgColor = isDark ? '#0f172a' : '#ffffff';
@@ -361,18 +356,11 @@ export default class DefinitionGraphModalWidget {
     }
 
     _resolveContextId(targetBean) {
-        if (targetBean?.contextId) return targetBean.contextId;
-        if (this.contextId) return this.contextId;
-        const stored = beanDataStore.findBeanByName(targetBean?.beanName || targetBean?.name);
-        if (stored?.contextId) return stored.contextId;
-        for (const bean of beanDataStore.beansMap.values()) {
-            if (bean?.contextId) return bean.contextId;
-        }
-        return '';
+        return targetBean?.contextId || this.contextId || '';
     }
 
     async _prefetchRelatedBeans(targetBean) {
-        if (!this.findBeanEndpoint || !targetBean) return;
+        if (!this.findBeanEndpoint) return;
 
         const ctxId = this._resolveContextId(targetBean);
         const relatedNames = [...(targetBean.dependencies || []), ...(targetBean.dependents || [])];
@@ -400,7 +388,7 @@ export default class DefinitionGraphModalWidget {
     }
 
     _computeLayout(graphData) {
-        if (!graphData || !graphData.target) return;
+        if (!graphData?.target) return;
 
         const { target, dependencies = [], dependents = [] } = graphData;
         const isTB = this.modalGraphMode === 'tb';
@@ -680,7 +668,7 @@ export default class DefinitionGraphModalWidget {
     }
 
     _handleMouseMove(event) {
-        if (!this.canvas || !this.modalGraphNodes || this.modalGraphNodes.length === 0) return;
+        if (!this.hasNodes) return;
 
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = rect.width > 0 ? (this.width / rect.width) : 1;
@@ -715,8 +703,6 @@ export default class DefinitionGraphModalWidget {
     }
 
     _emitNodeTooltip(node) {
-        if (!node) return;
-
         const container = document.getElementById('modal-graph-container');
         const containerWidth = container?.clientWidth || this.width || 800;
         const containerHeight = container?.clientHeight || this.height || 600;
@@ -734,7 +720,7 @@ export default class DefinitionGraphModalWidget {
         const clampedX = Math.max(160, Math.min(containerWidth - 160, Math.round(screenX)));
 
         const name = node.fullName || node.name || node.data?.name || '-';
-        const ctxId = this.contextId || this._resolveContextId(this.targetBean);
+        const ctxId = this._resolveContextId(this.targetBean);
         const storedBean = beanDataStore.findBeanByName(name, ctxId) || beanDataStore.findBeanByName(name);
 
         const nodeMeta = node.meta || node.data?.meta || {};
@@ -838,7 +824,7 @@ export default class DefinitionGraphModalWidget {
     }
 
     _handleClick(event) {
-        if (!this.canvas || !this.modalGraphNodes) return;
+        if (!this.hasNodes) return;
 
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = rect.width > 0 ? (this.width / rect.width) : 1;
@@ -859,8 +845,6 @@ export default class DefinitionGraphModalWidget {
     }
 
     _findNodeAt(worldX, worldY) {
-        if (!this.modalGraphNodes || this.modalGraphNodes.length === 0) return null;
-
         for (let i = this.modalGraphNodes.length - 1; i >= 0; i--) {
             const node = this.modalGraphNodes[i];
             const halfWidth = (node.width || 180) / 2;

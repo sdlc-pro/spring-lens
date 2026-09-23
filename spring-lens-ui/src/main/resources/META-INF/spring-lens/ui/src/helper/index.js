@@ -4,6 +4,7 @@ export * from './constants.js';
 export { Formatter } from './formatters.js';
 export { AsyncUtils } from './async-utils.js';
 export { default as DomUtils } from './dom-utils.js';
+export { default as Guard } from './guard.js';
 export { default as QueryParam } from './query-param.js';
 export { default as TemplateEngine } from './template-engine.js';
 

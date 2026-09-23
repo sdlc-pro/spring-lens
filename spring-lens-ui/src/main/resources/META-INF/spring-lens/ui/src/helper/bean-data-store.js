@@ -1,7 +1,4 @@
-/**
- * Manages in-memory bean definition mappings
- */
-class BeanDataStore {
+export class BeanDataStore {
 
     constructor() {
         this.beansMap = new Map();
@@ -64,6 +61,15 @@ class BeanDataStore {
 
     has(key) {
         return this.beansMap.has(key);
+    }
+
+    clear() {
+        this.beansMap.clear();
+        window.allBeansMap = this.beansMap;
+    }
+
+    size() {
+        return this.beansMap.size;
     }
 }
 

@@ -6,6 +6,7 @@ import {
     definitionGraphModalWidget,
     beanDataStore,
     DomUtils,
+    Guard,
     Pagination,
     QueryParam,
     ToastNotification,
@@ -78,9 +79,7 @@ export class DefinitionController extends BaseController {
             paginationInfo: Pagination.formatInfoText(0, 0, 20, 'beans'),
             pageButtons: [],
 
-            selectedBeanId: null,
-            selectedBeanName: null,
-            selectedContextId: null,
+            selectedKey: null,
             selectedBean: null,
             selectedBeanMeta: { icon: 'schema', color: '#8b5cf6' },
             selectedBeanFormatted: {
@@ -123,9 +122,7 @@ export class DefinitionController extends BaseController {
             currentPage: 1,
             sortColumn: '',
             sortDirection: 'asc',
-            selectedBeanId: null,
-            selectedBeanName: null,
-            selectedContextId: null,
+            selectedKey: null,
             selectedBean: null
         };
     }
@@ -149,11 +146,10 @@ export class DefinitionController extends BaseController {
             nextPage: () => this.nextPage(),
             goToPage: (page) => this.goToPage(page),
 
-            selectBean: (bean) => this.selectBean(bean),
-            isSelected: (bean) => this.isSelected(bean),
+            selectBean: (beanName, contextId) => this.selectBean(beanName, contextId),
+            isSelected: (id) => this.isSelected(id),
             closeSidebar: () => this.closeSidebar(),
             setSidebarTab: (tab) => this.setSidebarTab(tab),
-            selectDependency: (depName) => this.selectDependency(depName),
 
             openGraphModal: () => this.openGraphModal(),
             closeGraphModal: () => this.closeGraphModal(),
@@ -186,17 +182,8 @@ export class DefinitionController extends BaseController {
     }
 
     async _handleDeepLink(targetBean, targetContextId) {
-        if (!targetBean) return;
-
-        const success = await this.selectBeanByNameAndContextId(targetBean, targetContextId);
-        if (!success) {
-            ToastNotification.show({
-                title: 'Bean Definition',
-                message: `Bean <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${targetBean}</strong> definition details could not be found.`,
-                type: 'warning',
-                duration: 4000
-            });
-        }
+        if (Guard.isBlank(targetBean)) return;
+        await this.selectBean(targetBean, targetContextId);
     }
 
     async enter(params, context) {
@@ -227,6 +214,7 @@ export class DefinitionController extends BaseController {
         this.closeGraphModal();
         this._resetFilterState();
         definitionChartsWidget.destroyCharts();
+        beanDataStore.clear();
 
         super.leave();
     }
@@ -282,106 +270,64 @@ export class DefinitionController extends BaseController {
         }
     }
 
-    async selectBean(beanOrName, contextId = null, preloadedBean = null) {
-        if (!beanOrName) return false;
+    async selectBean(beanName, contextId) {
+        if (Guard.isBlank(beanName)) return false;
 
-        const isObject = typeof beanOrName === 'object';
-        const beanName = isObject ? (beanOrName.beanName || beanOrName.raw?.beanName) : beanOrName;
-        const ctxId = isObject ? (beanOrName.contextId ?? beanOrName.raw?.contextId ?? '') : contextId;
-        const preloaded = isObject ? (beanOrName.raw || beanOrName) : preloadedBean;
+        const selectedKey = `${contextId || ''}::${beanName}`;
+        let bean = beanDataStore.findBeanByName(beanName, contextId);
+        this.setState({
+            selectedKey,
+            selectedBean: bean || null
+        });
 
-        return this.selectBeanByNameAndContextId(beanName, ctxId, preloaded);
-    }
-
-    async selectBeanByNameAndContextId(beanName, contextId = null, preloadedBean = null) {
-        if (!beanName) return false;
-
-        const resolvedContextId = contextId ?? this.state.selectedContextId ?? '';
-        const bean = await this._resolveBean(beanName, resolvedContextId, preloadedBean);
-        if (!bean) return false;
-
-        this._applySelectedBean(bean, resolvedContextId);
-        this.setState({ sidebarTab: 'properties' });
-
-        if (!Array.isArray(bean.dependencies) || !Array.isArray(bean.dependents)) {
-            await this._refreshBeanDetails(bean.beanName, resolvedContextId);
+        if (!Guard.hasDependencies(bean)) {
+            const remote = await this.service.fetchBeanDefinitionDetails(beanName, contextId);
+            if (remote) {
+                beanDataStore.addBeans([remote]);
+                bean = remote;
+            }
         }
+        if (Guard.isBlank(bean)) {
+            this.setState({ selectedKey: null });
+            ToastNotification.show({
+                title: 'Bean Definition Not Found',
+                message: `The bean <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${beanName}</strong> could not be located in the application context.`,
+                type: 'warning',
+                duration: 4000
+            });
+            return false;
+        }
+
+        const details = definitionSidebarWidget.formatDetails(bean);
+        this.setState({
+            selectedKey,
+            selectedBean: bean,
+            selectedBeanMeta: details?.meta || { icon: 'schema', color: '#8b5cf6' },
+            selectedBeanFormatted: details,
+            sidebarDeps: definitionSidebarWidget.formatDependencyItems(bean.dependencies || [], bean.contextId),
+            sidebarDependents: definitionSidebarWidget.formatDependencyItems(bean.dependents || [], bean.contextId),
+            sidebarTab: 'properties',
+            sidebarOpen: true
+        });
 
         return true;
     }
 
-    async _resolveBean(beanName, contextId, preloadedBean = null) {
-        if (preloadedBean) return preloadedBean;
-
-        const targetId = definitionTableWidget.generateBeanUniqueId(contextId, beanName);
-        const local = this.rawBeans.find(b => definitionTableWidget.generateBeanUniqueId(b) === targetId || (b.beanName === beanName && (!contextId || b.contextId === contextId)))
-            || beanDataStore.findBeanByName(beanName, contextId);
-        if (local) return local;
-
-        const remote = await this.service.fetchBeanDefinitionDetails(beanName, contextId);
-        if (remote) beanDataStore.addBeans([remote]);
-        return remote;
-    }
-
-    _applySelectedBean(bean, contextId) {
-        const details = definitionSidebarWidget.formatDetails(bean);
-        const resolvedContextId = contextId ?? bean.contextId ?? '';
-        this.setState({
-            selectedBeanId: definitionTableWidget.generateBeanUniqueId(resolvedContextId, bean.beanName),
-            selectedBeanName: bean.beanName,
-            selectedContextId: resolvedContextId,
-            selectedBean: bean,
-            selectedBeanMeta: details?.meta || { icon: 'schema', color: '#8b5cf6' },
-            selectedBeanFormatted: details,
-            sidebarDeps: definitionSidebarWidget.formatDependencyItems(bean.dependencies || [], resolvedContextId),
-            sidebarDependents: definitionSidebarWidget.formatDependencyItems(bean.dependents || [], resolvedContextId),
-            sidebarOpen: true
-        });
-    }
-
-    async _refreshBeanDetails(beanName, contextId) {
-        const fresh = await this.service.fetchBeanDefinitionDetails(beanName, contextId);
-        const targetId = definitionTableWidget.generateBeanUniqueId(contextId, beanName);
-        if (fresh && this.state.selectedBeanId === targetId) {
-            beanDataStore.addBeans([fresh]);
-            this._applySelectedBean(fresh, contextId);
-        }
-    }
-
-    isSelected(bean) {
-        if (!bean || !this.state.selectedBeanId) return false;
-        if (typeof bean === 'string') {
-            return bean === this.state.selectedBeanId || bean === this.state.selectedBeanName;
-        }
-        const id = bean.uniqueId || definitionTableWidget.generateBeanUniqueId(bean);
-        return id === this.state.selectedBeanId;
+    isSelected(id) {
+        if (Guard.isBlank(id)) return false;
+        return (this.alpine?.selectedKey ?? this.state.selectedKey) === id;
     }
 
     closeSidebar() {
         this.setState({
             sidebarOpen: false,
-            selectedBeanId: null,
-            selectedBeanName: null,
-            selectedContextId: null,
-            selectedBean: null
+            selectedBean: null,
+            selectedKey: null
         });
     }
 
     setSidebarTab(tab) {
         this.setState({ sidebarTab: tab });
-    }
-
-    async selectDependency(dependencyOrDependentName) {
-        if (!dependencyOrDependentName) return;
-        const success = await this.selectBeanByNameAndContextId(dependencyOrDependentName, this.state.selectedContextId);
-        if (!success) {
-            ToastNotification.show({
-                title: 'Dependency details Not Found',
-                message: `The bean <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${dependencyOrDependentName}</strong> is referenced, but its definition could not be located in the application context.`,
-                type: 'warning',
-                duration: 4500
-            });
-        }
     }
 
     _updateTableQuery(patch = {}, resetPage = true) {
@@ -413,7 +359,7 @@ export class DefinitionController extends BaseController {
     }
 
     sort(column) {
-        if (!column) return;
+        if (Guard.isBlank(column)) return;
         const direction = (this.state.sortColumn === column && this.state.sortDirection === 'asc') ? 'desc' : 'asc';
         this._updateTableQuery({ sortColumn: column, sortDirection: direction });
     }
@@ -437,23 +383,17 @@ export class DefinitionController extends BaseController {
     }
 
     async openGraphModal() {
-        if (!this.state.selectedBeanName) return;
+        const bean = this.state.selectedBean;
+        if (Guard.isBlank(bean)) return;
 
-        let beanData = this.state.selectedBean;
-        if (!beanData || !beanData.dependencies) {
-            beanData = await this.service.fetchBeanDefinitionDetails(this.state.selectedBeanName, this.state.selectedContextId);
-        }
-
-        if (beanData) {
-            this._wireModalWidget();
-            definitionGraphModalWidget.contextId = this.state.selectedContextId;
-            this.setState({
-                graphModalOpen: true,
-                graphTargetBean: beanData,
-                graphMode: 'lr'
-            });
-            await definitionGraphModalWidget.open(beanData);
-        }
+        this._wireModalWidget();
+        definitionGraphModalWidget.contextId = bean.contextId;
+        this.setState({
+            graphModalOpen: true,
+            graphTargetBean: bean,
+            graphMode: 'lr'
+        });
+        await definitionGraphModalWidget.open(bean);
     }
 
     closeGraphModal() {
@@ -483,7 +423,7 @@ export class DefinitionController extends BaseController {
     }
 
     async exportModalGraph() {
-        if (this.state.isExportingGraph || !this.state.graphTargetBean) return;
+        if (this.state.isExportingGraph || Guard.isBlank(this.state.graphTargetBean)) return;
 
         this.setState({ isExportingGraph: true });
 
@@ -505,29 +445,26 @@ export class DefinitionController extends BaseController {
     }
 
     async selectGraphNode(beanName) {
-        if (!beanName) return;
+        if (Guard.isBlank(beanName)) return;
 
-        const success = await this.selectBeanByNameAndContextId(beanName, this.state.selectedContextId);
+        const success = await this.selectBean(beanName, this.state.selectedBean?.contextId);
         if (success && this.state.selectedBean) {
-            definitionGraphModalWidget.contextId = this.state.selectedContextId;
+            definitionGraphModalWidget.contextId = this.state.selectedBean.contextId;
             this.setState({ graphTargetBean: this.state.selectedBean });
             await definitionGraphModalWidget.open(this.state.selectedBean);
-        } else if (!success) {
-            ToastNotification.show({
-                title: 'Bean Definition Not Found',
-                message: `Bean definition for <strong class="font-mono text-purple-600 dark:text-purple-400 font-bold">${beanName}</strong> is unavailable or not registered.`,
-                type: 'warning',
-                duration: 4000
-            });
         }
     }
 
     async refreshData() {
         this.setState({ refreshing: true });
+        beanDataStore.clear();
         await Promise.allSettled([
             this.fetchBeanDefinitions(),
             this.fetchBeanDefinitionSummary()
         ]);
+        if (this.state.selectedBean) {
+            await this.selectBean(this.state.selectedBean.beanName, this.state.selectedBean.contextId);
+        }
         setTimeout(() => this.setState({ refreshing: false }), 500);
     }
 

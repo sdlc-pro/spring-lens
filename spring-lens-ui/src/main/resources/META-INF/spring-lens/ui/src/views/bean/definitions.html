@@ -422,9 +422,9 @@
                             </template>
 
                             <!-- Dynamic Bean Rows -->
-                            <template x-for="bean in beans" :key="bean.uniqueId">
-                                <tr @click="selectBean(bean)"
-                                    :class="{ 'def-row-active bg-gradient-to-r from-purple-100/70 via-purple-50/40 to-transparent dark:from-purple-950/60 dark:via-purple-900/20 dark:to-transparent border-l-2 border-primary dark:border-purple-400 font-medium': isSelected(bean) }"
+                            <template x-for="bean in beans" :key="bean.id">
+                                <tr @click="selectBean(bean.beanName, bean.contextId)"
+                                    :class="{ 'def-row-active bg-gradient-to-r from-purple-100/70 via-purple-50/40 to-transparent dark:from-purple-950/60 dark:via-purple-900/20 dark:to-transparent border-l-2 border-primary dark:border-purple-400 font-medium': isSelected(bean.id) }"
                                     class="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 cursor-pointer transition-colors bean-row group">
 
                                     <!-- Bean Name & Subtitle -->
@@ -540,7 +540,7 @@
 
                                     <!-- Action -->
                                     <td class="px-5 py-3.5 text-right whitespace-nowrap">
-                                        <button type="button" @click.stop="selectBean(bean)"
+                                        <button type="button" @click.stop="selectBean(bean.beanName, bean.contextId)"
                                             class="w-7 h-7 rounded-lg inline-flex items-center justify-center text-gray-400 hover:text-primary dark:hover:text-purple-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                             title="View bean details">
                                             <span class="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -842,7 +842,7 @@
                         <!-- Dependency items -->
                         <div class="space-y-1.5" id="detail-deps-list">
                             <template x-for="dep in sidebarDeps" :key="dep.fullName">
-                                <div @click="selectDependency(dep.fullName)"
+                                <div @click="selectBean(dep.fullName, dep.contextId)"
                                     class="def-sidebar-item-click flex items-center justify-between p-2.5 bg-white dark:bg-slate-950 hover:bg-purple-50/80 dark:hover:bg-purple-950/40 rounded-xl transition-all cursor-pointer border border-gray-100 dark:border-slate-800 hover:border-primary/30 shadow-2xs hover:shadow-xs group">
                                     <div class="flex items-center gap-2.5 min-w-0">
                                         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-2xs"
@@ -876,7 +876,7 @@
                         <!-- Dependent items -->
                         <div class="space-y-1.5" id="detail-dependents-list">
                             <template x-for="dep in sidebarDependents" :key="dep.fullName">
-                                <div @click="selectDependency(dep.fullName)"
+                                <div @click="selectBean(dep.fullName, dep.contextId)"
                                     class="def-sidebar-item-click flex items-center justify-between p-2.5 bg-white dark:bg-slate-950 hover:bg-purple-50/80 dark:hover:bg-purple-950/40 rounded-xl transition-all cursor-pointer border border-gray-100 dark:border-slate-800 hover:border-primary/30 shadow-2xs hover:shadow-xs group">
                                     <div class="flex items-center gap-2.5 min-w-0">
                                         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-2xs"

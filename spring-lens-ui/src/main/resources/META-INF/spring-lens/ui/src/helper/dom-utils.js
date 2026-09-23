@@ -1,3 +1,5 @@
+import Guard from './guard.js';
+
 class DomUtils {
 
     static css(variableName) {
@@ -5,7 +7,8 @@ class DomUtils {
     }
 
     static downloadBlob(filename, blob) {
-        if (!blob) return;
+        if (Guard.isBlank(blob)) return;
+
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
@@ -17,7 +20,7 @@ class DomUtils {
     }
 
     static downloadJson(filename, data) {
-        if (!data) return;
+        if (Guard.isBlank(data)) return;
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
         this.downloadBlob(filename, blob);
     }

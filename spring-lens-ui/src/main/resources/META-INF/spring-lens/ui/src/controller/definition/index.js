@@ -19,6 +19,7 @@ export {
     Pagination,
     beanDataStore,
     DomUtils,
+    Guard,
     QueryParam,
     ToastNotification,
     AsyncUtils,
