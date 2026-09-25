@@ -1,6 +1,6 @@
 import BaseController from '../base-controller.js';
 import {
-    instanceKpiWidget,
+    instanceSummaryWidget,
     instanceTableWidget,
     instanceWaterfallWidget,
     instanceSidebarWidget,
@@ -13,6 +13,7 @@ import {
     ToastNotification
 } from './index.js';
 import container from '../../core/container.js';
+import {Guard} from "../../helper";
 
 const PRESET_BOTTLENECK_THRESHOLDS = [
     { value: '100000', label: 'Bottleneck: > 100µs', nanos: 100000 },
@@ -30,6 +31,7 @@ export class InstanceController extends BaseController {
 
     instances = [];
     instanceSummary = null;
+    _fetchSeq = 0;
 
     constructor() {
         super('instances');
@@ -37,40 +39,27 @@ export class InstanceController extends BaseController {
         this.service = container.make('instanceService');
         this.applicationState = container.make('applicationState');
 
-        const savedThreshold = parseInt(localStorage.getItem('sl-bottleneck-threshold-nanos'), 10);
-        const bottleneckThreshold = Number.isFinite(savedThreshold) && savedThreshold > 0 ? savedThreshold : 500000;
-        const savedCustom = parseInt(localStorage.getItem('sl-custom-bottleneck-threshold-nanos'), 10);
-        const isPreset = PRESET_BOTTLENECK_THRESHOLDS.some(p => p.nanos === bottleneckThreshold);
-        const customThreshold = Number.isFinite(savedCustom) && savedCustom > 0
-            ? savedCustom
-            : (!isPreset ? bottleneckThreshold : null);
-        const bottleneckOptions = this._buildBottleneckOptions(customThreshold);
-        const legendTexts = this._buildLegendTexts(bottleneckThreshold);
+        this.state = this._initialState();
 
-        this.state = {
+        this._debouncedSearch = AsyncUtils.debounce(() => this._resetPageAndFetch(), 250);
+        this.addDisposable(this._debouncedSearch);
+    }
+
+    _initialState() {
+        return {
             appName: this.applicationState?.getAppName?.() || 'SpringLens',
-            kpi: instanceKpiWidget.formatSummary(null),
+            kpi: instanceSummaryWidget.formatSummary(),
             summaryLoading: true,
 
-            searchQuery: '',
-            sortCreated: 'ASC',
-            sortDuration: '',
-            sortBy: 'createdAt',
-            sortDir: 'ASC',
-            bottleneckThresholdNanos: bottleneckThreshold,
-            customBottleneckThresholdNanos: customThreshold,
-            bottleneckOptions,
-            ...legendTexts,
+            ...this._getResetFilterState(),
+
             customThresholdModalOpen: false,
             customModalValue: '750',
             customModalUnit: 'us',
             customModalFormattedText: '750µs',
             customModalPreviewCount: 0,
             customModalPreviewText: '',
-            pageSize: 20,
-            currentPage: 1,
             activeView: 'instance',
-            zoomLevel: 1,
 
             ganttRows: [],
             tableRows: [],
@@ -92,6 +81,7 @@ export class InstanceController extends BaseController {
 
             selectedBeanName: null,
             selectedContextId: null,
+            selectedKey: null,
             selectedInstance: null,
             sidebarDetails: null,
             sidebarOpen: false,
@@ -107,9 +97,41 @@ export class InstanceController extends BaseController {
                 visible: false
             }
         };
+    }
 
-        this._debouncedSearch = AsyncUtils.debounce(() => this._resetPageAndFetch(), 250);
-        this.addDisposable(this._debouncedSearch);
+    _resolveThresholdState() {
+        const savedThreshold = Number.parseInt(localStorage.getItem('sl-bottleneck-threshold-nanos'), 10);
+        const bottleneckThreshold = Number.isFinite(savedThreshold) && savedThreshold > 0 ? savedThreshold : 500000;
+        const savedCustom = Number.parseInt(localStorage.getItem('sl-custom-bottleneck-threshold-nanos'), 10);
+        const isPreset = PRESET_BOTTLENECK_THRESHOLDS.some(p => p.nanos === bottleneckThreshold);
+        const customThreshold = Number.isFinite(savedCustom) && savedCustom > 0
+            ? savedCustom
+            : (!isPreset ? bottleneckThreshold : null);
+
+        return {
+            bottleneckThresholdNanos: bottleneckThreshold,
+            customBottleneckThresholdNanos: customThreshold,
+            bottleneckOptions: this._buildBottleneckOptions(customThreshold),
+            ...this._buildLegendTexts(bottleneckThreshold)
+        };
+    }
+
+    _getResetFilterState() {
+        return {
+            searchQuery: '',
+            sortCreated: 'ASC',
+            sortDuration: '',
+            sortBy: 'createdAt',
+            sortDir: 'ASC',
+            pageSize: 20,
+            currentPage: 1,
+            zoomLevel: 1,
+            ...this._resolveThresholdState()
+        };
+    }
+
+    _resetFilterState() {
+        this.setState(this._getResetFilterState());
     }
 
     createAlpineState() {
@@ -138,6 +160,7 @@ export class InstanceController extends BaseController {
             nextPage: () => this.nextPage(),
             goToPage: (page) => this.goToPage(page),
             selectBean: (beanName, contextId, source) => this.selectBean(beanName, contextId, source),
+            isSelected: (id) => this.isSelected(id),
             closeSidebar: () => this.closeSidebar(),
             closeBottomPreview: () => this.closeBottomPreview(),
             toggleBottomPreviewExpand: () => this.toggleBottomPreviewExpand(),
@@ -156,110 +179,140 @@ export class InstanceController extends BaseController {
         };
     }
 
-    async enter(params, context = null) {
+    _bindEventListeners() {
+        this.on(document, 'keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeSidebar();
+                this.closeBottomPreview();
+                this.closeCustomThresholdModal();
+            }
+        });
+
+        const unsub = this.applicationState?.onAppInfoChange?.((info) => {
+            if (info?.name) this.setState({ appName: info.name });
+        });
+        if (unsub) this.addDisposable(unsub);
+    }
+
+    _parseQueryParams(params) {
+        const queryParams = QueryParam.parse(params);
+        const targetBean = QueryParam.get(queryParams, 'search', 'bean', 'beanName') || '';
+        const targetContextId = QueryParam.get(queryParams, 'contextId', 'context') || '';
+
+        if (targetBean) {
+            this.setState({ searchQuery: targetBean });
+        }
+
+        return { targetBean, targetContextId };
+    }
+
+    async _handleDeepLink(targetBean, targetContextId) {
+        if (Guard.isBlank(targetBean)) return;
+
+        const match = this.instances?.find(i => i.beanName === targetBean);
+        const beanName = match?.beanName || targetBean;
+        const contextId = targetContextId || match?.contextId;
+
+        await this.selectBean(beanName, contextId);
+    }
+
+    async enter(params, context) {
         await super.enter(params, context);
-        try {
-            this._resetFilterState();
-            this.closeSidebar();
-            this.closeBottomPreview();
 
-            const queryParams = QueryParam.parse(params);
-            const targetBean = QueryParam.get(queryParams, 'search', 'bean');
-            const targetContextId = QueryParam.get(queryParams, 'contextId', 'context');
+        this.closeSidebar();
+        this.closeBottomPreview();
+        this.closeCustomThresholdModal();
+        this._resetFilterState();
+        this._bindEventListeners();
 
-            if (targetBean) {
-                this.setState({ searchQuery: targetBean });
-            }
+        const { targetBean, targetContextId } = this._parseQueryParams(params);
 
-            this.on(document, 'keydown', (e) => {
-                if (e.key === 'Escape') {
-                    this.closeSidebar();
-                    this.closeBottomPreview();
-                }
-            });
+        await Promise.allSettled([
+            this.fetchBeanInstanceSummary(),
+            this.fetchInstanceData()
+        ]);
 
-            await Promise.allSettled([
-                this.fetchSummaryData(),
-                this.fetchInstanceData()
-            ]);
-
-            if (targetBean && this.instances && this.instances.length > 0) {
-                const match = this.instances.find(i => i.beanName === targetBean) || this.instances[0];
-                if (match) {
-                    await this.selectBean(match.beanName, targetContextId || match.contextId);
-                }
-            }
-        } catch (error) {
-            console.error('Error in Instance enter:', error);
+        if (targetBean) {
+            await this._handleDeepLink(targetBean, targetContextId);
         }
     }
 
-    async fetchSummaryData() {
+    async fetchBeanInstanceSummary() {
         this.setState({ summaryLoading: true });
-        try {
-            const summaryData = await this.service.fetchSummaryData();
-            this.instanceSummary = summaryData;
+
+        const summaryData = await this.service.fetchBeanInstanceSummary();
+        this.instanceSummary = summaryData;
+
+        this.setState({
+            kpi: instanceSummaryWidget.formatSummary(summaryData),
+            summaryLoading: false
+        });
+    }
+
+    _buildInstanceQuery() {
+        return {
+            pageNumber : Math.max(0, (this.state.currentPage || 1) - 1),
+            pageSize   : Number(this.state.pageSize) || 20,
+            search     : this.state.searchQuery?.trim() || '',
+            sortBy     : this.state.sortBy || 'createdAt',
+            sortDir    : (this.state.sortDir || 'ASC').toUpperCase()
+        };
+    }
+
+    _applyInstanceResponse(response, query, append = false) {
+        if (!response) {
             this.setState({
-                kpi: instanceKpiWidget.formatSummary(summaryData),
-                summaryLoading: false
+                loading: false,
+                error: 'Failed to load bean instances'
             });
-        } catch (error) {
-            console.error('Error fetching bean instance summary:', error);
-            this.setState({ summaryLoading: false });
+            return;
         }
+
+        const { content, pagination, pageButtons, paginationInfo } = Pagination.compute(
+            response,
+            query.pageNumber,
+            query.pageSize,
+            'instances'
+        );
+
+        this.instances = append ? [...this.instances, ...content] : content;
+        beanDataStore.addBeans(content);
+
+        this.computeInstanceMetrics();
+
+        this.setState({
+            pagination,
+            pageButtons,
+            paginationInfo,
+            loading: false,
+            error: null
+        });
+
+        this.updatePresentationModels();
     }
 
     async fetchInstanceData(append = false) {
-        if (!append) {
+        if (!Guard.isBlank(append)) {
             this.setState({ loading: true, error: null });
         }
 
+        const seq = ++this._fetchSeq;
+        const query = this._buildInstanceQuery();
+
         try {
-            const responseData = await this.service.fetchInstanceData({
-                pageNumber: Math.max(0, (this.state.currentPage || 1) - 1),
-                pageSize: this.state.pageSize || 20,
-                search: this.state.searchQuery || '',
-                sortBy: this.state.sortBy || 'createdAt',
-                sortDir: this.state.sortDir || 'ASC'
-            });
+            const response = await this.service.fetchInstanceData(query);
 
-            const content = Array.isArray(responseData?.content) ? responseData.content : [];
-            if (append) {
-                this.instances = [...this.instances, ...content];
-            } else {
-                this.instances = content;
+            if (seq === this._fetchSeq) {
+                this._applyInstanceResponse(response, query, append);
             }
-            beanDataStore.addBeans(content);
-
-            const totalElements = responseData?.totalElements ?? this.instances.length;
-            const totalPages = Math.max(1, responseData?.totalPages ?? 1);
-            const pageNumber = responseData?.pageNumber ?? 0;
-            const pageSize = responseData?.pageSize ?? this.state.pageSize ?? 20;
-
-            const paginationState = {
-                totalElements,
-                totalPages,
-                pageNumber,
-                pageSize,
-                isFirstPage: responseData?.first ?? (pageNumber === 0),
-                isLastPage: responseData?.last ?? (pageNumber >= totalPages - 1)
-            };
-
-            this.computeInstanceMetrics();
-
-            this.setState({
-                pagination: paginationState,
-                loading: false,
-                error: null
-            });
-
-            this.updatePresentationModels();
         } catch (error) {
-            console.error('Error fetching bean instance data:', error);
-            this.setState({
-                loading: false,
-                error: error.message || 'Unknown network error'
-            });
+            if (seq === this._fetchSeq) {
+                console.error('Error fetching bean instance data:', error);
+                this.setState({
+                    loading: false,
+                    error: error?.message || 'Failed to load bean instances'
+                });
+            }
         }
     }
 
@@ -407,7 +460,7 @@ export class InstanceController extends BaseController {
             return;
         }
 
-        const nanos = parseInt(val, 10);
+        const nanos = Number.parseInt(val, 10);
         const threshold = (Number.isFinite(nanos) && nanos > 0) ? nanos : this.state.bottleneckThresholdNanos;
 
         localStorage.setItem('sl-bottleneck-threshold-nanos', threshold);
@@ -482,7 +535,7 @@ export class InstanceController extends BaseController {
     }
 
     _calculateModalPreview(valStr, unit) {
-        const val = parseFloat(valStr);
+        const val = Number.parseFloat(valStr);
         if (!Number.isFinite(val) || val <= 0) {
             return {
                 nanos: 0,
@@ -622,29 +675,6 @@ export class InstanceController extends BaseController {
             legendBottleneckText: `>${Formatter.formatDuration(threshold)} (Bottleneck)`
         };
     }
-
-    _parseDurationToNanos(str) {
-        if (!str) return null;
-        const trimmed = String(str).trim().toLowerCase().replace(/\s+/g, '');
-        if (/^\d+(\.\d+)?$/.test(trimmed)) {
-            const num = parseFloat(trimmed);
-            return num < 10000 ? Math.round(num * 1000) : Math.round(num);
-        }
-        if (trimmed.endsWith('ns')) {
-            return Math.round(parseFloat(trimmed));
-        }
-        if (trimmed.endsWith('us') || trimmed.endsWith('µs')) {
-            return Math.round(parseFloat(trimmed) * 1000);
-        }
-        if (trimmed.endsWith('ms')) {
-            return Math.round(parseFloat(trimmed) * 1e6);
-        }
-        if (trimmed.endsWith('s')) {
-            return Math.round(parseFloat(trimmed) * 1e9);
-        }
-        return null;
-    }
-
     onPageSizeChange(event) {
         const pageSize = parseInt(event.target.value, 10) || 20;
         this.setState({ pageSize, currentPage: 1 });
@@ -654,34 +684,6 @@ export class InstanceController extends BaseController {
     resetFilters() {
         this._resetFilterState();
         return this.fetchInstanceData();
-    }
-
-    _resetFilterState() {
-        const savedThreshold = parseInt(localStorage.getItem('sl-bottleneck-threshold-nanos'), 10);
-        const bottleneckThreshold = Number.isFinite(savedThreshold) && savedThreshold > 0 ? savedThreshold : 500000;
-        const savedCustom = parseInt(localStorage.getItem('sl-custom-bottleneck-threshold-nanos'), 10);
-        const isPreset = PRESET_BOTTLENECK_THRESHOLDS.some(p => p.nanos === bottleneckThreshold);
-        const customThreshold = Number.isFinite(savedCustom) && savedCustom > 0
-            ? savedCustom
-            : (!isPreset ? bottleneckThreshold : null);
-
-        const bottleneckOptions = this._buildBottleneckOptions(customThreshold);
-        const legendTexts = this._buildLegendTexts(bottleneckThreshold);
-
-        this.setState({
-            searchQuery: '',
-            sortCreated: 'ASC',
-            sortDuration: '',
-            sortBy: 'createdAt',
-            sortDir: 'ASC',
-            bottleneckThresholdNanos: bottleneckThreshold,
-            customBottleneckThresholdNanos: customThreshold,
-            bottleneckOptions,
-            ...legendTexts,
-            pageSize: 20,
-            currentPage: 1,
-            zoomLevel: 1
-        });
     }
 
     _resetPageAndFetch() {
@@ -735,7 +737,7 @@ export class InstanceController extends BaseController {
     }
 
     onZoomSliderInput(event) {
-        this.setZoom(parseFloat(event.target.value) || 1);
+        this.setZoom(Number.parseFloat(event.target.value) || 1);
     }
 
     onScrubberMouseMove(event) {
@@ -813,7 +815,7 @@ export class InstanceController extends BaseController {
 
     goToPage(page) {
         if (!page) return;
-        const target = parseInt(page, 10);
+        const target = Number.parseInt(page, 10);
         if (!Number.isNaN(target) && target !== this.state.currentPage && target >= 1 && target <= this.state.pagination.totalPages) {
             this.setState({ currentPage: target });
             this.fetchInstanceData();
@@ -824,19 +826,21 @@ export class InstanceController extends BaseController {
         if (!beanName) return;
 
         const resolvedContext = contextId || 'root';
+        const selectedKey = `${resolvedContext}::${beanName}`;
         const isGantt = source === 'gantt' || (!source && this.state.activeView === 'instance');
 
         if (isGantt) {
             this.setState({
                 selectedBeanName: beanName,
                 selectedContextId: resolvedContext,
+                selectedKey,
                 bottomPreviewOpen: true,
                 sidebarOpen: false
             });
 
             setTimeout(() => {
                 const previewEl = document.getElementById('instance-bottom-preview');
-                if (previewEl && previewEl.scrollIntoView) {
+                if (previewEl?.scrollIntoView) {
                     previewEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             }, 80);
@@ -844,6 +848,7 @@ export class InstanceController extends BaseController {
             this.setState({
                 selectedBeanName: beanName,
                 selectedContextId: resolvedContext,
+                selectedKey,
                 sidebarOpen: true,
                 sidebarTab: 'telemetry',
                 bottomPreviewOpen: false
@@ -854,8 +859,6 @@ export class InstanceController extends BaseController {
         this.setState({
             sidebarDetails: instanceSidebarWidget.formatDetails(localInst, this.state.maxDurationNanos, this.state.bottleneckThresholdNanos)
         });
-
-        this.updatePresentationModels();
 
         const isCurrentSelection = () => this.state.selectedBeanName === beanName && this.state.selectedContextId === resolvedContext;
 
@@ -897,6 +900,11 @@ export class InstanceController extends BaseController {
         await Promise.allSettled([fetchDetailsPromise, fetchProxyPromise]);
     }
 
+    isSelected(id) {
+        if (!id) return false;
+        return (this.alpine?.selectedKey ?? this.state.selectedKey) === id;
+    }
+
     closeSidebar() {
         this.setState({
             sidebarOpen: false
@@ -905,12 +913,12 @@ export class InstanceController extends BaseController {
             this.setState({
                 selectedBeanName: null,
                 selectedContextId: null,
+                selectedKey: null,
                 selectedInstance: null,
                 sidebarDetails: null,
                 proxyInfo: null,
                 proxyLoading: false
             });
-            this.updatePresentationModels();
         }
     }
 
@@ -923,9 +931,9 @@ export class InstanceController extends BaseController {
             this.setState({
                 selectedBeanName: null,
                 selectedContextId: null,
+                selectedKey: null,
                 selectedInstance: null
             });
-            this.updatePresentationModels();
         }
     }
 
@@ -993,7 +1001,7 @@ export class InstanceController extends BaseController {
         this.setState({ refreshing: true });
         try {
             await Promise.allSettled([
-                this.fetchSummaryData(),
+                this.fetchBeanInstanceSummary(),
                 this.fetchInstanceData()
             ]);
         } catch (err) {
@@ -1019,6 +1027,7 @@ export class InstanceController extends BaseController {
     }
 
     leave() {
+        this._fetchSeq++;
         this.closeSidebar();
         this.closeBottomPreview();
         this.closeCustomThresholdModal();
@@ -1026,5 +1035,3 @@ export class InstanceController extends BaseController {
         super.leave();
     }
 }
-
-export default InstanceController;

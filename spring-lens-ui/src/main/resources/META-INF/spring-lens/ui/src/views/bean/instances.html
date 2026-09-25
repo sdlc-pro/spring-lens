@@ -369,10 +369,10 @@
                             </div>
 
                             <!-- Gantt Rows Loop -->
-                            <template x-for="row in ganttRows" :key="row.contextId + '::' + row.beanName">
+                            <template x-for="row in ganttRows" :key="row.id">
                                 <div class="waterfall-row flex items-center hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer group py-2 px-5 select-none relative z-[1]"
-                                    :data-bean-id="row.contextId + '::' + row.beanName"
-                                    :class="{ 'gantt-row-selected': row.isSelected }"
+                                    :data-bean-id="row.id"
+                                    :class="{ 'gantt-row-selected': isSelected(row.id) }"
                                     :style="'--row-accent-color: ' + row.barColor"
                                     @click="selectBean(row.beanName, row.contextId, 'gantt')">
                                     <!-- Left Info Column -->
@@ -597,9 +597,9 @@
                             </tr>
 
                             <!-- Table Rows Loop -->
-                            <template x-for="row in tableRows" :key="row.contextId + '::' + row.beanName">
+                            <template x-for="row in tableRows" :key="row.id">
                                 <tr class="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer instance-table-row group"
-                                    :class="{ 'instance-row-selected font-semibold bg-primary/10 dark:bg-purple-950/30 border-l-4 border-primary': row.isSelected }"
+                                    :class="{ 'instance-row-selected font-semibold bg-primary/10 dark:bg-purple-950/30 border-l-4 border-primary': isSelected(row.id) }"
                                     :style="'--row-accent-color: ' + row.layerColor"
                                     @click="selectBean(row.beanName, row.contextId, 'table')">
                                     <!-- Bean Name -->

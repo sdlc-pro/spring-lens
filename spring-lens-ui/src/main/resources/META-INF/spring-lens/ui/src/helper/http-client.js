@@ -117,7 +117,8 @@ export class HttpClient {
                 details = await response.json();
                 message = details?.message || details?.error || message;
             }
-        } catch (_) {}
+        } catch (_) {
+        }
 
         const error = new Error(message);
         error.status = response.status;

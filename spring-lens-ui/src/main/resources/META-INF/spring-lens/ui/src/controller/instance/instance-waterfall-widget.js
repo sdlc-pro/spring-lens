@@ -20,42 +20,69 @@ export class InstanceWaterfallWidget {
         }).filter(tick => tick.pct <= 100);
     }
 
-    formatGanttRows(instances = [], selectedBeanName = null, selectedContextId = null, maxDurationNanos = 0, maxTimeMs = 10, bottleneckThresholdNanos = 500000) {
+    formatGanttRows(instances = [], optionsOrSelectedBeanName = null, selectedContextId = null, maxDurationNanos = 0, maxTimeMs = 10, bottleneckThresholdNanos = 500000) {
         if (!Array.isArray(instances)) return [];
-        const effectiveMax = maxTimeMs || 1;
 
-        return instances.map(inst => {
-            const {
-                beanName = '',
-                contextId = '',
-                initDurationNanos = 0,
-                initDurationMs = (initDurationNanos / 1e6),
-                layer
-            } = inst;
-
-            const resolvedLayer = layer || BeanMetadataRules.resolveBeanLayer(inst) || {};
-            const durationStyle = BeanMetadataRules.resolveDurationColor(initDurationNanos, maxDurationNanos, bottleneckThresholdNanos) || {};
-            const isSelected = selectedBeanName === beanName && selectedContextId === contextId;
-            const barColor = durationStyle.color || resolvedLayer.color || '#8b5cf6';
-            const widthPct = Math.min(Math.max((initDurationMs / effectiveMax) * 100, 0.6), 100);
-
-            return {
-                beanName,
-                displayName: GraphTreeBuilder._displayName(beanName),
-                contextId: contextId || 'root',
-                layer: resolvedLayer,
-                layerColor: resolvedLayer.color || '#8b5cf6',
-                layerIcon: resolvedLayer.icon || 'deployed_code',
-                durationFormatted: Formatter.formatDuration(initDurationNanos),
-                durationStyle,
-                barColor,
-                widthPct,
-                showBarLabel: widthPct > 6,
-                isSelected,
-                isBottleneck: Boolean(durationStyle.isBottleneck),
-                raw: inst
+        const options = (typeof optionsOrSelectedBeanName === 'object' && optionsOrSelectedBeanName !== null)
+            ? optionsOrSelectedBeanName
+            : {
+                selectedBeanName: optionsOrSelectedBeanName,
+                selectedContextId,
+                maxDurationNanos,
+                maxTimeMs,
+                bottleneckThresholdNanos
             };
-        });
+
+        return instances.map(inst => this.formatGanttRow(inst, options));
+    }
+
+    formatGanttRow(inst, options = {}) {
+        const {
+            selectedBeanName = null,
+            selectedContextId = null,
+            maxDurationNanos = 0,
+            maxTimeMs = 10,
+            bottleneckThresholdNanos = 500000
+        } = options;
+
+        const {
+            beanName = '',
+            contextId = '',
+            initDurationNanos = 0,
+            layer
+        } = inst || {};
+
+        const resolvedLayer = layer || BeanMetadataRules.resolveBeanLayer(inst) || {};
+        const durationStyle = BeanMetadataRules.resolveDurationColor(initDurationNanos, maxDurationNanos, bottleneckThresholdNanos) || {};
+        const isSelected = selectedBeanName === beanName && selectedContextId === contextId;
+        const barColor = durationStyle.color || resolvedLayer.color || '#8b5cf6';
+        const widthPct = this._calculateBarWidth(initDurationNanos, maxTimeMs);
+        const canonicalContextId = contextId || 'root';
+        const id = `${canonicalContextId}::${beanName}`;
+
+        return {
+            id,
+            beanName,
+            displayName: GraphTreeBuilder._displayName(beanName),
+            contextId: canonicalContextId,
+            layer: resolvedLayer,
+            layerColor: resolvedLayer.color || '#8b5cf6',
+            layerIcon: resolvedLayer.icon || 'deployed_code',
+            durationFormatted: Formatter.formatDuration(initDurationNanos),
+            durationStyle,
+            barColor,
+            widthPct,
+            showBarLabel: widthPct > 6,
+            isSelected,
+            isBottleneck: Boolean(durationStyle.isBottleneck),
+            raw: inst
+        };
+    }
+
+    _calculateBarWidth(initDurationNanos, maxTimeMs) {
+        const effectiveMax = maxTimeMs || 1;
+        const initDurationMs = (initDurationNanos || 0) / 1e6;
+        return Math.min(Math.max((initDurationMs / effectiveMax) * 100, 0.6), 100);
     }
 
     calculateScrubber(pageX, innerEl, scrollContainerEl, maxTimeMs = 10, manifestWidth = 340) {

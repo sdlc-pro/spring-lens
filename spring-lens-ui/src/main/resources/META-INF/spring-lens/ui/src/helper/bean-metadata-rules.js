@@ -211,7 +211,7 @@ export class BeanMetadataRules {
      */
     static resolveLatencyTheme(durationMs) {
         const rule = LATENCY_THEME_RULES.find(r => durationMs >= r.minDurationMs);
-        return rule ?? LATENCY_THEME_RULES[LATENCY_THEME_RULES.length - 1];
+        return rule ?? LATENCY_THEME_RULES.at(-1);
     }
 
     /**

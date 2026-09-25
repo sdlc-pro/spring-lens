@@ -1,4 +1,4 @@
-import TemplateEngine from '../../helper/template-engine.js';
+import Template from '../../helper/template.js';
 
 export default class StatusIndicatorWidget {
 
@@ -15,7 +15,7 @@ export default class StatusIndicatorWidget {
         this.currentStatus = isLive;
 
         const template = isLive ? 'tpl-status-connected' : 'tpl-status-disconnected';
-        const element = TemplateEngine.clone(template);
+        const element = Template.clone(template);
         if (element) {
             $(this.container).empty().append(element);
         }

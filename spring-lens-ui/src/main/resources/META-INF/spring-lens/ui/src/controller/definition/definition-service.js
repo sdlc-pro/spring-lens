@@ -28,8 +28,6 @@ export default class DefinitionService {
     }
 
     async fetchBeanDefinitionDetails(beanName, contextId) {
-        if (!beanName) return null;
-
         const queryParams = QueryParam.build({ contextId, beanName }).toString();
         return httpClient.getWithQuery(this.endpoints.find, queryParams).catch(err => {
             console.warn('Failed to fetch bean definition details:', beanName, err);

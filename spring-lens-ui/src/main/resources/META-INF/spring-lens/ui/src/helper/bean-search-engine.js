@@ -12,8 +12,8 @@ export default class BeanSearchEngine {
      */
     static index(items = []) {
         if (!Array.isArray(items)) return [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
+        for (const element of items) {
+            const item = element;
             if (!item._searchIndex) {
                 const name = (item.beanName || '').toLowerCase();
                 const type = (item.type || '').toLowerCase();
@@ -42,8 +42,8 @@ export default class BeanSearchEngine {
         const tokens = cleanQuery.split(/\s+/).filter(Boolean);
         const results = [];
 
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
+        for (const element of items) {
+            const item = element;
             const idx = item._searchIndex || {
                 name: (item.beanName || '').toLowerCase(),
                 type: (item.type || '').toLowerCase(),
@@ -55,8 +55,8 @@ export default class BeanSearchEngine {
 
             // Fast multi-token matching
             let allMatch = true;
-            for (let t = 0; t < tokens.length; t++) {
-                if (!idx.full.includes(tokens[t])) {
+            for (const element of tokens) {
+                if (!idx.full.includes(element)) {
                     allMatch = false;
                     break;
                 }

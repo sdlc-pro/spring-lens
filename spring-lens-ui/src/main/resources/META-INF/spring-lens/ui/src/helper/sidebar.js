@@ -1,4 +1,4 @@
-import TemplateEngine from './template-engine.js';
+import Template from './template.js';
 import { DEPENDENCY_CATEGORY_COLORS } from './constants.js';
 import { Formatter } from './formatters.js';
 import { BeanMetadataRules } from './bean-metadata-rules.js';
@@ -132,7 +132,7 @@ export default class Sidebar {
 
         if (!beanNames || !beanNames.length) {
             if (emptyTemplateId) {
-                const emptyClone = TemplateEngine.clone(emptyTemplateId);
+                const emptyClone = Template.clone(emptyTemplateId);
                 if (emptyClone) {
                     $(emptyClone).find('[data-field="message"]').text(emptyText);
                     $container.append(emptyClone);
@@ -145,7 +145,7 @@ export default class Sidebar {
 
         const fragment = document.createDocumentFragment();
         beanNames.forEach(depName => {
-            const clone = TemplateEngine.clone(templateId);
+            const clone = Template.clone(templateId);
             if (!clone) return;
 
             const displayName = GraphTreeBuilder._displayName(depName);

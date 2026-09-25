@@ -5,8 +5,20 @@ import {
 } from '../../helper/index.js';
 
 export class InstanceSidebarWidget {
-    formatDetails(instance, maxDurationNanos = 0, bottleneckThresholdNanos = 500000) {
+    formatDetails(instance, optionsOrMaxDurationNanos = 0, bottleneckThreshold = 500000) {
         if (!instance) return null;
+
+        const options = (typeof optionsOrMaxDurationNanos === 'object' && optionsOrMaxDurationNanos !== null)
+            ? optionsOrMaxDurationNanos
+            : {
+                maxDurationNanos: optionsOrMaxDurationNanos,
+                bottleneckThresholdNanos
+            };
+
+        const {
+            maxDurationNanos = 0,
+            bottleneckThresholdNanos = 500000
+        } = options;
 
         const {
             beanName = '',
@@ -20,12 +32,9 @@ export class InstanceSidebarWidget {
 
         const metadata = BeanMetadataRules.resolveBeanMetadata(instance) || { icon: 'schema', color: '#8b5cf6' };
         const durationStyle = BeanMetadataRules.resolveDurationColor(initDurationNanos, maxDurationNanos, bottleneckThresholdNanos) || {};
-        const definitionHref = `#/definitions?beanName=${encodeURIComponent(beanName)}${contextId ? `&contextId=${encodeURIComponent(contextId)}` : ''}`;
-
-        const isBottleneck = (initDurationNanos || 0) > bottleneckThresholdNanos;
-        const pctOfMax = maxDurationNanos > 0 ? Math.min(100, Math.max(1, Math.round(((initDurationNanos || 0) / maxDurationNanos) * 100))) : 0;
-        const simpleType = type && type !== 'N/A' ? (type.includes('.') ? type.split('.').pop() : type) : 'N/A';
-        const packageName = type && type !== 'N/A' && type.includes('.') ? type.substring(0, type.lastIndexOf('.')) : '';
+        const definitionHref = this._buildDefinitionHref(beanName, contextId);
+        const { simpleType, packageName } = this._resolveTypeInfo(type);
+        const pctOfMax = this._calculatePctOfMax(initDurationNanos, maxDurationNanos);
 
         return {
             name: GraphTreeBuilder._displayName(beanName),
@@ -37,7 +46,7 @@ export class InstanceSidebarWidget {
             duration: Formatter.formatDuration(initDurationNanos),
             initDurationNanos: initDurationNanos || 0,
             pctOfMax,
-            isBottleneck,
+            isBottleneck: Boolean(durationStyle.isBottleneck),
             context: contextId || 'root',
             created: Formatter.formatDateTime(createdAt),
             rawCreated: createdAt || 'N/A',
@@ -54,11 +63,10 @@ export class InstanceSidebarWidget {
 
     formatProxyInfo(proxyInfo) {
         if (!proxyInfo || proxyInfo.isDirect || proxyInfo.proxyType === 'DIRECT') {
-            const directStyles = BeanMetadataRules.resolveProxyBadgeStyles('DIRECT');
             return {
                 isDirect: true,
                 proxyType: 'Direct',
-                badgeStyles: directStyles,
+                badgeStyles: BeanMetadataRules.resolveProxyBadgeStyles('DIRECT'),
                 targetClass: 'N/A',
                 adviceFrozen: false,
                 adviceFrozenClass: BeanMetadataRules.resolveAdviceFrozenClass(false),
@@ -75,26 +83,50 @@ export class InstanceSidebarWidget {
             proxyType = 'CGLIB'
         } = proxyInfo;
 
-        const proxyStyles = BeanMetadataRules.resolveProxyBadgeStyles(proxyType);
-
         return {
             isDirect: false,
             proxyType,
-            badgeStyles: proxyStyles,
+            badgeStyles: BeanMetadataRules.resolveProxyBadgeStyles(proxyType),
             targetClass: targetClass || 'N/A',
             adviceFrozen: Boolean(adviceFrozen),
             adviceFrozenClass: BeanMetadataRules.resolveAdviceFrozenClass(adviceFrozen),
-            advices: advices.map(adv => ({
-                fullName: adv,
-                shortName: adv.includes('.') ? adv.split('.').pop() : adv,
-                badge: 'Advice'
-            })),
-            proxiedInterfaces: proxiedInterfaces.map(iface => ({
-                fullName: iface,
-                shortName: iface.includes('.') ? iface.split('.').pop() : iface,
-                badge: 'Interface'
-            }))
+            advices: this._formatProxyMembers(advices, 'Advice'),
+            proxiedInterfaces: this._formatProxyMembers(proxiedInterfaces, 'Interface')
         };
+    }
+
+    _buildDefinitionHref(beanName, contextId) {
+        return `#/definitions?beanName=${encodeURIComponent(beanName || '')}${contextId ? `&contextId=${encodeURIComponent(contextId)}` : ''}`;
+    }
+
+    _calculatePctOfMax(initDurationNanos, maxDurationNanos) {
+        if (!maxDurationNanos || maxDurationNanos <= 0) return 0;
+        return Math.min(100, Math.max(1, Math.round(((initDurationNanos || 0) / maxDurationNanos) * 100)));
+    }
+
+    _resolveTypeInfo(type) {
+        if (!type || type === 'N/A') {
+            return { simpleType: 'N/A', packageName: '' };
+        }
+
+        const lastDotIndex = type.lastIndexOf('.');
+        if (lastDotIndex === -1) {
+            return { simpleType: type, packageName: 'default package' };
+        }
+
+        return {
+            simpleType: type.substring(lastDotIndex + 1),
+            packageName: type.substring(0, lastDotIndex)
+        };
+    }
+
+    _formatProxyMembers(items = [], badge) {
+        if (!Array.isArray(items)) return [];
+        return items.map(item => ({
+            fullName: item,
+            shortName: item.includes('.') ? item.split('.').pop() : item,
+            badge
+        }));
     }
 }
 

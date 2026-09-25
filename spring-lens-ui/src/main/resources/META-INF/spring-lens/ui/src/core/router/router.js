@@ -1,4 +1,4 @@
-import TemplateEngine from '../../helper/template-engine.js';
+import Template from '../../helper/template.js';
 import { NAV_STYLES } from '../../helper/constants.js';
 import RouteDefinition from './route-definition.js';
 import Pipeline from './pipeline.js';
@@ -257,7 +257,7 @@ export default class Router {
     }
 
     _showLoadingIndicator() {
-        const loadingClone = TemplateEngine.clone('tpl-app-loading');
+        const loadingClone = Template.clone('tpl-app-loading');
         if (loadingClone) {
             this.container.empty().append(loadingClone);
         }
@@ -362,7 +362,7 @@ export default class Router {
     }
 
     _renderError(message) {
-        const errorClone = TemplateEngine.clone('tpl-app-error');
+        const errorClone = Template.clone('tpl-app-error');
         if (errorClone) {
             $(errorClone).find('[data-field="message"]').text(message);
             this.container.empty().append(errorClone);

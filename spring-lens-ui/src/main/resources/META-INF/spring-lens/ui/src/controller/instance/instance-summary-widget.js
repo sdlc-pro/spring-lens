@@ -1,21 +1,7 @@
 import { Formatter } from '../../helper/index.js';
 
-export class InstanceKpiWidget {
-    formatSummary(summaryData) {
-        if (!summaryData) {
-            return {
-                totalCreatedInstances: '-',
-                instancesWithDefinition: '-',
-                instancesWithoutDefinitionText: '0 dynamic',
-                totalDuration: '-',
-                totalDurationNanos: '-',
-                maxDuration: '-',
-                maxDurationNanos: '-',
-                avgDuration: '-',
-                avgDurationNanos: '-'
-            };
-        }
-
+export class InstanceSummaryWidget {
+    formatSummary(beanInstanceSummary = {}) {
         const {
             totalCreatedInstances = 0,
             instancesWithDefinition = 0,
@@ -23,7 +9,7 @@ export class InstanceKpiWidget {
             maxInitializationDurationNanos = 0,
             totalInitializationDurationNanos = 0,
             averageInitializationDurationNanos = 0
-        } = summaryData;
+        } = beanInstanceSummary || {};
 
         return {
             totalCreatedInstances: totalCreatedInstances.toLocaleString(),
@@ -39,5 +25,4 @@ export class InstanceKpiWidget {
     }
 }
 
-export const instanceKpiWidget = new InstanceKpiWidget();
-export default instanceKpiWidget;
+export const instanceSummaryWidget = new InstanceSummaryWidget();

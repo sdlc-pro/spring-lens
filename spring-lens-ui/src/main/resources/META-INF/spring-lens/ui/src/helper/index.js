@@ -6,7 +6,7 @@ export { AsyncUtils } from './async-utils.js';
 export { default as DomUtils } from './dom-utils.js';
 export { default as Guard } from './guard.js';
 export { default as QueryParam } from './query-param.js';
-export { default as TemplateEngine } from './template-engine.js';
+export { default as TemplateEngine } from './template.js';
 
 // 3. Network & Routing Infrastructure
 export { default as httpClient, HttpClient } from './http-client.js';

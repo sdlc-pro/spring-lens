@@ -1,4 +1,4 @@
-import TemplateEngine from './template-engine.js';
+import Template from './template.js';
 
 export default class ToastNotification {
     static _lastToastTime = 0;
@@ -66,7 +66,7 @@ export default class ToastNotification {
 
         let $container = $('#sl-toast-container');
         if (!$container.length) {
-            const containerClone = TemplateEngine.clone('tpl-toast-container');
+            const containerClone = Template.clone('tpl-toast-container');
             if (containerClone) {
                 $('body').append(containerClone);
                 $container = $('#sl-toast-container');
@@ -77,7 +77,7 @@ export default class ToastNotification {
         const toastId = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const hasAction = action && typeof action.label === 'string';
 
-        const clone = TemplateEngine.clone('tpl-toast-item');
+        const clone = Template.clone('tpl-toast-item');
         if (!clone) return;
 
         const $toast = $(clone.firstElementChild || clone.children[0]);

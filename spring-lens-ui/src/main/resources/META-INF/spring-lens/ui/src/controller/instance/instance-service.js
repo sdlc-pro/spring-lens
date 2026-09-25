@@ -1,5 +1,5 @@
 import httpClient from '../../helper/http-client.js';
-import { QueryParam, DomUtils } from '../../helper/index.js';
+import { QueryParam, DomUtils, Guard } from '../../helper/index.js';
 
 export class InstanceService {
     constructor(ENDPOINTS = {}) {
@@ -11,8 +11,11 @@ export class InstanceService {
         };
     }
 
-    async fetchSummaryData() {
-        return httpClient.get(this.endpoints.summary);
+    async fetchBeanInstanceSummary() {
+        return httpClient.get(this.endpoints.summary).catch(error => {
+            console.error('Error fetching bean instance summary:', error);
+            return null;
+        });
     }
 
     async fetchInstanceData(queryOptions = {}) {
@@ -31,7 +34,7 @@ export class InstanceService {
     }
 
     async findBeanInstance(contextId, beanName) {
-        if (!beanName) return null;
+        if (Guard.isBlank(beanName)) return null;
         const queryParams = QueryParam.build({ contextId, beanName });
         return httpClient.getWithQuery(
             this.endpoints.find,
@@ -40,7 +43,7 @@ export class InstanceService {
     }
 
     async fetchProxyInfo(contextId, beanName) {
-        if (!beanName) return null;
+        if (Guard.isBlank(beanName)) return null;
         const queryParams = QueryParam.build({ contextId, beanName });
         return httpClient.getWithQuery(
             this.endpoints.proxy,

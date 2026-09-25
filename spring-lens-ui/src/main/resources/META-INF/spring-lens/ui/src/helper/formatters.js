@@ -36,7 +36,7 @@ export class Formatter {
      * @returns {string}
      */
     static formatDuration(nanos) {
-        if (nanos === undefined || nanos === null || isNaN(nanos)) return '0µs';
+        if (nanos === undefined || nanos === null || Number.isNaN(nanos)) return '0µs';
         const n = Number(nanos);
         if (n >= 1_000_000_000) return (n / 1e9).toFixed(2) + 's';
         const ms = n / 1e6;
