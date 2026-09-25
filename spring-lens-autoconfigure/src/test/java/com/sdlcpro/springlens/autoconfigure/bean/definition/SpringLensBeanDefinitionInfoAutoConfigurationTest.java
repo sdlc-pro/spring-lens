@@ -25,7 +25,7 @@ class SpringLensBeanDefinitionInfoAutoConfigurationTest {
 
     @Test
     void disablesWhenPropertyFalse() {
-        runner.withPropertyValues("spring.lens.bean.bean-definition.enabled=false")
+        runner.withPropertyValues("spring.lens.bean.definition.enabled=false")
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoRepository.class);
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoCollector.class);

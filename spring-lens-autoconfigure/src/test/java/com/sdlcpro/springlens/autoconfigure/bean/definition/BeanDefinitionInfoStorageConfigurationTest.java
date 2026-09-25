@@ -73,7 +73,7 @@ class BeanDefinitionInfoStorageConfigurationTest {
     void doesNotRegisterStorageBeansWhenFeatureIsDisabled() {
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(SpringLensBeanDefinitionInfoAutoConfiguration.class))
-                .withPropertyValues("spring.lens.bean.bean-definition.enabled=false")
+                .withPropertyValues("spring.lens.bean.definition.enabled=false")
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoStorageConfiguration.class);
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoRepository.class);

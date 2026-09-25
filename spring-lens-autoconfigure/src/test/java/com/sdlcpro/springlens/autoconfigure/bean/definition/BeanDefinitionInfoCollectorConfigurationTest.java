@@ -54,7 +54,7 @@ class BeanDefinitionInfoCollectorConfigurationTest {
     void doesNotRegisterCollectorWhenFeatureIsDisabled() {
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(SpringLensBeanDefinitionInfoAutoConfiguration.class))
-                .withPropertyValues("spring.lens.bean.bean-definition.enabled=false")
+                .withPropertyValues("spring.lens.bean.definition.enabled=false")
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoCollectorConfiguration.class);
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoCollector.class);

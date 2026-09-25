@@ -84,7 +84,7 @@ class BeanDefinitionInfoHttpExposureConfigurationTest {
     void doesNotRegisterExposureBeansWhenFeatureIsDisabled() {
         new WebApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(SpringLensBeanDefinitionInfoAutoConfiguration.class))
-                .withPropertyValues("spring.lens.bean.bean-definition.enabled=false")
+                .withPropertyValues("spring.lens.bean.definition.enabled=false")
                 .run(context -> {
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoHttpExposureConfiguration.class);
                     assertThat(context).doesNotHaveBean(BeanDefinitionInfoRestController.class);

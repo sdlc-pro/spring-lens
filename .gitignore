@@ -27,6 +27,7 @@ target/
 !**/src/test/**/target/
 .kotlin
 .env
+*.asc
 
 ### IntelliJ IDEA ###
 .idea

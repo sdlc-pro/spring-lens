@@ -1,5 +1,6 @@
 package com.sdlcpro.springlens.ui;
 
+import com.sdlcpro.springlens.annotation.SpringLensInternalComponent;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -7,6 +8,7 @@ import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @AutoConfiguration
+@SpringLensInternalComponent
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class SpringLensUiAutoConfiguration implements WebMvcConfigurer {
 
