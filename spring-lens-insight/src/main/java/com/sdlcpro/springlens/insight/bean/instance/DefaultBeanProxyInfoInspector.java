@@ -51,13 +51,27 @@ public class DefaultBeanProxyInfoInspector implements BeanProxyInfoInspector {
 
         Advisor[] advisors = advised.getAdvisors();
         List<String> advices = new LinkedList<>();
-        for (Advisor advisor : advisors) {
-            advices.add(advisor.getAdvice().getClass().getTypeName());
+        if (advisors != null) {
+            for (Advisor advisor : advisors) {
+                if (advisor != null) {
+                    var advice = advisor.getAdvice();
+                    if (advice != null) {
+                        advices.add(advice.getClass().getTypeName());
+                    } else {
+                        advices.add(advisor.getClass().getTypeName());
+                    }
+                }
+            }
         }
 
         List<String> proxiedInterfaces = new LinkedList<>();
-        for (Class<?> clazz : advised.getProxiedInterfaces()) {
-            proxiedInterfaces.add(clazz.getTypeName());
+        Class<?>[] interfaces = advised.getProxiedInterfaces();
+        if (interfaces != null) {
+            for (Class<?> clazz : interfaces) {
+                if (clazz != null) {
+                    proxiedInterfaces.add(clazz.getTypeName());
+                }
+            }
         }
 
         String targetClass = AopProxyUtils.ultimateTargetClass(bean).getTypeName();

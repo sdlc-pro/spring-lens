@@ -961,11 +961,11 @@
                                     <!-- Advices Chips -->
                                     <div class="flex items-center gap-1 flex-wrap pt-0.5">
                                         <span class="text-[10px] text-gray-400 font-medium">Advices:</span>
-                                        <template x-for="adv in (proxyInfo?.advices || []).slice(0, 3)"
-                                            :key="adv.fullName">
+                                        <template x-for="(adv, index) in (proxyInfo?.advices || []).slice(0, 3)"
+                                            :key="adv.id || (adv.fullyQualifiedName ? adv.fullyQualifiedName + '-' + index : index)">
                                             <span
                                                 class="px-1.5 py-0.2 rounded text-[9px] font-mono font-medium bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/50"
-                                                x-text="adv.shortName" :title="adv.fullName"></span>
+                                                x-text="adv.proxyOrAdviceName || adv.shortName || adv.fullyQualifiedName || adv" :title="adv.fullyQualifiedName || adv.fullName || adv"></span>
                                         </template>
                                         <span x-show="!proxyInfo?.advices?.length"
                                             class="text-[10px] text-gray-400 italic">None</span>
@@ -1222,14 +1222,15 @@
                                             x-text="proxyInfo?.advices?.length || 0">0</span>
                                     </div>
                                     <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
-                                        <template x-for="adv in proxyInfo?.advices || []" :key="adv.fullName">
+                                        <template x-for="(adv, index) in (proxyInfo?.advices || [])"
+                                            :key="adv.id || (adv.fullyQualifiedName ? adv.fullyQualifiedName + '-' + index : index)">
                                             <div
                                                 class="flex items-center justify-between py-1 px-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800/80 text-[10.5px] font-mono">
-                                                <span class="text-gray-800 dark:text-gray-200 truncate font-medium"
-                                                    x-text="adv.shortName" :title="adv.fullName"></span>
+                                                <span class="text-gray-800 dark:text-gray-200 truncate font-medium min-w-0 flex-1 mr-2"
+                                                    x-text="adv.proxyOrAdviceName || adv.shortName || adv.fullyQualifiedName || adv" :title="adv.fullyQualifiedName || adv.fullName || adv"></span>
                                                 <span
                                                     class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0"
-                                                    x-text="adv.badge">Advice</span>
+                                                    x-text="adv.badge || 'Advice'">Advice</span>
                                             </div>
                                         </template>
                                         <div x-show="!proxyInfo?.advices?.length"
@@ -1254,15 +1255,15 @@
                                             x-text="proxyInfo?.proxiedInterfaces?.length || 0">0</span>
                                     </div>
                                     <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pt-0.5">
-                                        <template x-for="iface in proxyInfo?.proxiedInterfaces || []"
-                                            :key="iface.fullName">
+                                        <template x-for="(iface, index) in (proxyInfo?.proxiedInterfaces || [])"
+                                            :key="iface.id || (iface.fullyQualifiedName ? iface.fullyQualifiedName + '-' + index : index)">
                                             <div
                                                 class="flex items-center justify-between py-1 px-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800/80 text-[10.5px] font-mono">
-                                                <span class="text-gray-800 dark:text-gray-200 truncate font-medium"
-                                                    x-text="iface.shortName" :title="iface.fullName"></span>
+                                                <span class="text-gray-800 dark:text-gray-200 truncate font-medium min-w-0 flex-1 mr-2"
+                                                    x-text="iface.proxyOrAdviceName || iface.shortName || iface.fullyQualifiedName || iface" :title="iface.fullyQualifiedName || iface.fullName || iface"></span>
                                                 <span
                                                     class="text-[9px] text-gray-400 dark:text-gray-500 font-sans ml-1 flex-shrink-0"
-                                                    x-text="iface.badge">Interface</span>
+                                                    x-text="iface.badge || 'Interface'">Interface</span>
                                             </div>
                                         </template>
                                         <div x-show="!proxyInfo?.proxiedInterfaces?.length"

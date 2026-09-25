@@ -834,6 +834,8 @@ export class InstanceController extends BaseController {
                 selectedBeanName: beanName,
                 selectedContextId: resolvedContext,
                 selectedKey,
+                proxyInfo: null,
+                proxyLoading: true,
                 bottomPreviewOpen: true,
                 sidebarOpen: false
             });
@@ -849,6 +851,8 @@ export class InstanceController extends BaseController {
                 selectedBeanName: beanName,
                 selectedContextId: resolvedContext,
                 selectedKey,
+                proxyInfo: null,
+                proxyLoading: true,
                 sidebarOpen: true,
                 sidebarTab: 'telemetry',
                 bottomPreviewOpen: false

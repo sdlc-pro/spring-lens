@@ -5,7 +5,7 @@ import {
 } from '../../helper/index.js';
 
 export class InstanceSidebarWidget {
-    formatDetails(instance, optionsOrMaxDurationNanos = 0, bottleneckThreshold = 500000) {
+    formatDetails(instance, optionsOrMaxDurationNanos = 0, bottleneckThresholdNanos = 500000) {
         if (!instance) return null;
 
         const options = (typeof optionsOrMaxDurationNanos === 'object' && optionsOrMaxDurationNanos !== null)
@@ -19,7 +19,7 @@ export class InstanceSidebarWidget {
             maxDurationNanos = 0,
             bottleneckThresholdNanos = 500000
         } = options;
-
+ 
         const {
             beanName = '',
             type = 'N/A',
@@ -120,13 +120,21 @@ export class InstanceSidebarWidget {
         };
     }
 
-    _formatProxyMembers(items = [], badge) {
-        if (!Array.isArray(items)) return [];
-        return items.map(item => ({
-            fullName: item,
-            shortName: item.includes('.') ? item.split('.').pop() : item,
-            badge
-        }));
+    _formatProxyMembers(advicesOrProxiedInterfaces = [], badge) {
+        if (!Array.isArray(advicesOrProxiedInterfaces)) return [];
+        return advicesOrProxiedInterfaces.map((fullyQualifiedName, index) => {
+            const proxyOrAdviceName = fullyQualifiedName.includes('.')
+                ? fullyQualifiedName.split('.').pop()
+                : fullyQualifiedName;
+
+            return {
+                id: `${badge ? badge.toLowerCase() : 'item'}-${index}`,
+                proxyOrAdviceName,
+                proxyOradviceName: proxyOrAdviceName,
+                fullyQualifiedName,
+                badge
+            };
+        });
     }
 }
 
