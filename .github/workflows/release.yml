@@ -28,8 +28,55 @@ jobs:
           server-username-env-var: CENTRAL_USERNAME
           server-password-env-var: CENTRAL_PASSWORD
 
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid release tag: ${GITHUB_REF_NAME}"
+            echo "::error::Expected format: vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          MAVEN_VERSION=$(mvn --batch-mode --quiet help:evaluate \
+            -Dexpression=project.version \
+            -DforceStdout)
+
+          echo "Release validation"
+          echo "------------------"
+          echo "Git tag:       ${GITHUB_REF_NAME}"
+          echo "Maven version: ${MAVEN_VERSION}"
+
+          if [[ "${MAVEN_VERSION}" == *"-SNAPSHOT" ]]; then
+            echo "::error::Cannot publish a SNAPSHOT version: ${MAVEN_VERSION}"
+            exit 1
+          fi
+
+          if [[ "${MAVEN_VERSION}" != "${TAG_VERSION}" ]]; then
+            echo "::error::Git tag version (${TAG_VERSION}) does not match Maven version (${MAVEN_VERSION})"
+            exit 1
+          fi
+
+          echo "Version validation passed."
+
       - name: Publish to Maven Central
-        run: mvn --batch-mode --no-transfer-progress clean deploy -P release -Dgpg.signer=bc
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Publishing Spring Lens ${GITHUB_REF_NAME} to Maven Central..."
+
+          mvn \
+            --batch-mode \
+            --no-transfer-progress \
+            clean deploy \
+            -P release \
+            -Dgpg.signer=bc
+
+          echo "Spring Lens ${GITHUB_REF_NAME} published successfully."
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
