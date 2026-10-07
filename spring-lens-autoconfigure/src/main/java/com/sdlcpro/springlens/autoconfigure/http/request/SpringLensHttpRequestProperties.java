@@ -10,13 +10,21 @@ import java.util.Set;
 @SpringLensInternalComponent
 @ConfigurationProperties(prefix = "spring.lens.http.request")
 public class SpringLensHttpRequestProperties {
-
+    private boolean enabled = true;
     private boolean includeRequestBody = false;
     private boolean includeResponseBody = false;
     private int maxBodyLength = 4096;
     private final Include include = new Include();
     private final Exclude exclude = new Exclude();
     private final Maskable maskable = new Maskable();
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public boolean isIncludeRequestBody() {
         return includeRequestBody;

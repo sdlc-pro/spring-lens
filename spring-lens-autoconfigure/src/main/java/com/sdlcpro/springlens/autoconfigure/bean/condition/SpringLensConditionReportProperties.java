@@ -12,7 +12,7 @@ import java.util.Set;
  */
 @SpringLensInternalComponent
 @ConfigurationProperties(prefix = "spring.lens.bean.condition-report")
-public class ConditionReportProperties {
+public class SpringLensConditionReportProperties {
     private boolean enabled = true;
     private final Include include = new Include();
     private final Exclude exclude = new Exclude();

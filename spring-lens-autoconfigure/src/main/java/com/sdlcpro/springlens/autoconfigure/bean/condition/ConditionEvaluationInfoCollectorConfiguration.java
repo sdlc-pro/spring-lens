@@ -35,7 +35,7 @@ class ConditionEvaluationInfoCollectorConfiguration {
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public ConditionEvaluationInfoCollector conditionEvaluationInfoCollector(
-            ApplicationContext context, ConditionReportProperties properties,
+            ApplicationContext context, SpringLensConditionReportProperties properties,
             ObjectProvider<ConditionEvaluationInfoCollectListener> conditionEvaluationInfoCollectListenerProvider
     ) {
         var include = properties.getInclude();

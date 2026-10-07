@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Role;
 @AutoConfiguration
 @SpringLensInternalComponent
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-@EnableConfigurationProperties(ConditionReportProperties.class)
+@EnableConfigurationProperties(SpringLensConditionReportProperties.class)
 @ConditionalOnProperty(
         prefix = "spring.lens.bean.condition-report",
         name = "enabled",
