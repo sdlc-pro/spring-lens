@@ -290,3 +290,9 @@ Spring Lens is heavily inspired by:
 ## Status
 
 Spring Lens is currently under active development.
+
+### Optional AI insights
+
+The optional [`spring-lens-ai`](spring-lens-ai/README.md) module analyzes bounded,
+privacy-filtered bean-definition counts and exposes insights to the UI over HTTP.
+It is disabled by default and is not included in `spring-lens-starter`.
