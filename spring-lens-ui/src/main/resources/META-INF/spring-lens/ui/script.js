@@ -1,3 +1,4 @@
+import { initializeAiAssistant } from './src/helper/ai-assistant.js';
 import { Route } from './src/core/router/route.js';
 import {
     WhatsNewController,
@@ -9,6 +10,7 @@ import {
 } from "./src/controller/index.js";
 
 $(document).ready(() => {
+    initializeAiAssistant();
 
     // 1. Dashboard Overview
     Route.get('/dashboard', [DashboardController, 'index'])

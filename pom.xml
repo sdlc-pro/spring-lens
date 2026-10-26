@@ -74,6 +74,7 @@
         <module>spring-lens-autoconfigure</module>
         <module>spring-lens-ui</module>
         <module>spring-lens-starter</module>
+        <module>spring-lens-ai</module>
     </modules>
 
     <dependencyManagement>
