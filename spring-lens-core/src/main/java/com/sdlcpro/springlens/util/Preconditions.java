@@ -75,12 +75,12 @@ public final class Preconditions {
 
     // --- hasLength ---
     public static void hasLength(String text, String message) {
-        if (text == null || text.isBlank())
+        if (text == null || text.isEmpty())
             throw new IllegalArgumentException(message != null ? message : "Text must not be empty");
     }
 
     public static void hasLength(String text, Supplier<String> message) {
-        if (text == null || text.isBlank()) throw new IllegalArgumentException(nullSafeMessage(message));
+        if (text == null || text.isEmpty()) throw new IllegalArgumentException(nullSafeMessage(message));
     }
 
     // --- hasText ---
