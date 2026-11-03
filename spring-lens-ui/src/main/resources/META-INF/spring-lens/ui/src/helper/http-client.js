@@ -1,11 +1,17 @@
 import QueryParam from './query-param.js';
+function isJsonContentType(contentType) {
+    const mediaType = contentType.split(';')[0].trim().toLowerCase();
+
+    return mediaType === 'application/json' ||
+        (mediaType.startsWith('application/') && mediaType.endsWith('+json'));
+}
 
 export class HttpClient {
 
     constructor({ timeoutMs = 15000, headers = {} } = {}) {
         this.defaultTimeoutMs = timeoutMs;
         this.defaultHeaders = {
-            'Accept': 'application/json',
+            'Accept': 'application/vnd.sdlc-pro.spring-lens.v2+json',
             ...headers
         };
     }
@@ -113,7 +119,7 @@ export class HttpClient {
 
         try {
             const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
+            if (isJsonContentType(contentType)) {
                 details = await response.json();
                 message = details?.message || details?.error || message;
             }
@@ -134,7 +140,7 @@ export class HttpClient {
         }
 
         const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
+        if (isJsonContentType(contentType)) {
             return await response.json();
         }
 
@@ -146,7 +152,7 @@ export class HttpClient {
         let serializedBody = body;
 
         if (body && typeof body === 'object' && !(body instanceof FormData) && !(body instanceof Blob)) {
-            headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+            headers['Content-Type'] = headers['Content-Type'] || 'application/vnd.sdlc-pro.spring-lens.v2+json;charset=UTF-8';
             serializedBody = JSON.stringify(body);
         }
 
