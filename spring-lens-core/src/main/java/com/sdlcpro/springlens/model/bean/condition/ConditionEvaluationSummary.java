@@ -1,7 +1,9 @@
 package com.sdlcpro.springlens.model.bean.condition;
 
+import com.sdlcpro.springlens.annotation.SpringLensWritable;
 import com.sdlcpro.springlens.util.Preconditions;
 
+@SpringLensWritable
 public record ConditionEvaluationSummary(
         int totalConditionSources,
         int matchedConditionSources,
