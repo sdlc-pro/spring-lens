@@ -4,6 +4,8 @@ import com.sdlcpro.springlens.exception.AccessorCreationException;
 import com.sdlcpro.springlens.exception.DataAccessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -51,26 +53,23 @@ class FieldAccessorCacheTest {
         );
 
         for (String path : invalidPaths) {
-            assertThatThrownBy(() ->
-                    FieldAccessorCache.getAccessor(Person.class, path)
-            ).isInstanceOf(AccessorCreationException.class)
+            assertThatThrownBy(() -> FieldAccessorCache.getAccessor(Person.class, path))
+                    .isInstanceOf(AccessorCreationException.class)
                     .hasMessageContaining(path);
         }
     }
 
     @Test
     void shouldRejectUnknownProperty() {
-        assertThatThrownBy(() ->
-                FieldAccessorCache.getAccessor(Person.class, "unknown")
-        ).isInstanceOf(AccessorCreationException.class)
+        assertThatThrownBy(() -> FieldAccessorCache.getAccessor(Person.class, "unknown"))
+                .isInstanceOf(AccessorCreationException.class)
                 .hasMessageContaining("unknown");
     }
 
     @Test
     void shouldRejectInvalidNestedProperty() {
-        assertThatThrownBy(() ->
-                FieldAccessorCache.getAccessor(Person.class, "address.unknown")
-        ).isInstanceOf(AccessorCreationException.class)
+        assertThatThrownBy(() -> FieldAccessorCache.getAccessor(Person.class, "address.unknown"))
+                .isInstanceOf(AccessorCreationException.class)
                 .hasMessageContaining("address.unknown");
     }
 
@@ -94,6 +93,27 @@ class FieldAccessorCacheTest {
                 Person.class,
                 "address.location.country.name"
         );
+
+        Person person = new Person("Abdullah",
+                new Address(
+                        new Location(
+                                new Country("Bangladesh")
+                        )
+                )
+        );
+
+        assertThat(accessor.apply(person)).isEqualTo("Bangladesh");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            " address.location.country.name ",
+            "address .location. country . name",
+            " address . location . country . name ",
+            "  address   .    location  .     country  .  name   ",
+    })
+    void shouldAccessDeeplyNestedRemovingUnwantedSpaces(String fieldPath) {
+        Function<Object, Object> accessor = FieldAccessorCache.getAccessor(Person.class, fieldPath);
 
         Person person = new Person("Abdullah",
                 new Address(
@@ -275,14 +295,15 @@ class FieldAccessorCacheTest {
     }
 
     @Test
-    void shouldSupportPrimitiveArraysAsContainers() {
+    void shouldNotFlatArrayWhenFoundAtTargetField() {
         Function<Object, Object> accessor = FieldAccessorCache.getAccessor(
                 IntegerArrayHolder.class,
                 "numbers"
         );
 
-        IntegerArrayHolder holder = new IntegerArrayHolder(new int[]{10, 20, 30});
-        assertThat(accessor.apply(holder)).asList().containsExactly(10, 20, 30);
+        int[] array = new int[]{10, 20, 30};
+        IntegerArrayHolder holder = new IntegerArrayHolder(array);
+        assertThat(accessor.apply(holder)).isEqualTo(array);
     }
 
     @Test
@@ -293,10 +314,6 @@ class FieldAccessorCacheTest {
 
         assertThat(accessor.apply(group)).isEqualTo(Collections.emptyList());
     }
-
-    // ---------------------------------------------------------
-    // 6. Map traversal
-    // ---------------------------------------------------------
 
     @Test
     void shouldAccessPropertyFromMapValues() {
@@ -375,7 +392,7 @@ class FieldAccessorCacheTest {
     }
 
     @Test
-    void shouldAccessMapValuesWithoutFurtherPath() {
+    void shouldNotFlatMapWhenFoundAtTargetField() {
         Function<Object, Object> accessor = FieldAccessorCache.getAccessor(PersonMapHolder.class, "people");
 
         Person alice = new Person("Alice");
@@ -386,7 +403,7 @@ class FieldAccessorCacheTest {
         people.put("second", bob);
 
         PersonMapHolder holder = new PersonMapHolder(people);
-        assertThat(accessor.apply(holder)).asList().containsExactly(alice, bob);
+        assertThat(accessor.apply(holder)).isEqualTo(people);
     }
 
     @Test
@@ -408,10 +425,6 @@ class FieldAccessorCacheTest {
 
         assertThat(accessor.apply(holder)).asList().containsExactly("Alice", "Bob");
     }
-
-    // ---------------------------------------------------------
-    // 8. Cache behavior
-    // ---------------------------------------------------------
 
     @Test
     void shouldCacheAccessorForSameRootTypeAndPath() {
@@ -487,8 +500,7 @@ class FieldAccessorCacheTest {
 
     @Test
     void shouldWrapRuntimeInvocationFailure() {
-        Function<Object, Object> accessor =
-                FieldAccessorCache.getAccessor(Person.class, "name");
+        Function<Object, Object> accessor = FieldAccessorCache.getAccessor(Person.class, "name");
 
         assertThatThrownBy(() -> accessor.apply("not-a-person"))
                 .isInstanceOf(DataAccessException.class)
