@@ -31,49 +31,65 @@ public final class FieldAccessorCache {
 
         return CACHE
                 .computeIfAbsent(rootType, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(fieldPath, path -> createAccessor(rootType, path));
+                .computeIfAbsent(fieldPath.trim(), path -> createAccessor(rootType, path));
     }
 
     private static Function<Object, Object> createAccessor(Class<?> rootType, String fieldPath) {
         try {
-            String[] parts = fieldPath.split("\\.", -1);
+            String[] paths = fieldPath.split("\\s*\\.\\s*", -1);
 
             Type currentType = rootType;
-            MethodHandle[] handles = new MethodHandle[parts.length];
+            MethodHandle[] handles = new MethodHandle[paths.length];
             MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-            for (int i = 0; i < parts.length; i++) {
-                if (parts[i].isBlank()) {
-                    throw new IllegalArgumentException("Invalid field path: " + fieldPath);
+            for (int i = 0; i < paths.length; i++) {
+                String path = paths[i];
+                if (path.isBlank()) {
+                    throw new IllegalArgumentException("Invalid field path '" + fieldPath + "'");
                 }
 
                 currentType = resolveElementType(currentType);
                 if (!(currentType instanceof Class<?> currentClass)) {
-                    throw new IllegalArgumentException("Cannot resolve field '" + parts[i] + "' from type '" + currentType + "'");
+                    throw new IllegalArgumentException("Cannot resolve field '" + path + "' from type '" + currentType + "'");
                 }
 
-                Method method = resolveAccessorMethod(currentClass, parts[i]);
+                Method method = resolveAccessorMethod(currentClass, path);
                 method.setAccessible(true);
                 handles[i] = lookup.unreflect(method);
                 currentType = method.getGenericReturnType();
             }
 
             return target -> accessData(target, handles, 0);
-
         } catch (Exception e) {
             throw new AccessorCreationException("Failed to create accessor for field path '" + fieldPath + "'", e);
         }
     }
 
     private static Object accessData(Object target, MethodHandle[] handles, int pos) {
-        if (target == null) {
-            return null;
+        if (target == null || pos >= handles.length) {
+            return target;
+        }
+
+        try {
+            Object data = handles[pos].invoke(target);
+            if (data == null || pos + 1 >= handles.length) {
+                return data;
+            }
+
+            return accessNestedData(data, handles, pos + 1);
+        } catch (Throwable e) {
+            throw new DataAccessException("Failed to access field at path segments using method handle at position " + pos, e);
+        }
+    }
+
+    private static Object accessNestedData(Object target, MethodHandle[] handles, int pos) {
+        if (target == null || pos >= handles.length) {
+            return target;
         }
 
         if (target instanceof Map<?, ?> map) {
             List<Object> results = new ArrayList<>();
-            for (var value : map.values()) {
-                Object result = accessData(value, handles, pos);
-                flattenInto(results, result);
+            for (Object value : map.values()) {
+                flattenInto(results, accessNestedData(value, handles, pos));
             }
 
             return results;
@@ -82,8 +98,7 @@ public final class FieldAccessorCache {
         if (target instanceof Collection<?> collection) {
             List<Object> results = new ArrayList<>();
             for (Object value : collection) {
-                Object result = accessData(value, handles, pos);
-                flattenInto(results, result);
+                flattenInto(results, accessNestedData(value, handles, pos));
             }
 
             return results;
@@ -93,24 +108,13 @@ public final class FieldAccessorCache {
             int length = Array.getLength(target);
             List<Object> results = new ArrayList<>();
             for (int i = 0; i < length; i++) {
-                Object value = Array.get(target, i);
-                Object result = accessData(value, handles, pos);
-                flattenInto(results, result);
+                flattenInto(results, accessNestedData(Array.get(target, i), handles, pos));
             }
 
             return results;
         }
 
-        if (pos >= handles.length) {
-            return target;
-        }
-
-        try {
-            Object data = handles[pos].invoke(target);
-            return accessData(data, handles, pos + 1);
-        } catch (Throwable e) {
-            throw new DataAccessException("Failed to access data at position " + pos, e);
-        }
+        return accessData(target, handles, pos);
     }
 
     private static void flattenInto(List<Object> results, Object value) {
