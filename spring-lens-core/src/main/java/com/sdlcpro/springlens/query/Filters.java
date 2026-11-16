@@ -64,7 +64,7 @@ public final class Filters {
 
     }
 
-    public static Filter eqIgnoreCaseIfPresent(String property, CharSequence value) {
+    public static Filter eqIgnoreCaseIfPresent(String property, Object value) {
         return isValuePresent(value) ? eqIgnoreCase(property, value) : Filter.UNFILTERED;
     }
 
@@ -87,7 +87,7 @@ public final class Filters {
         return ConditionalFilter.of(property, ConditionalOperator.EQUALS, value);
     }
 
-    public static Filter eqIgnoreCase(String property, CharSequence value) {
+    public static Filter eqIgnoreCase(String property, Object value) {
         return ConditionalFilter.of(property, ConditionalOperator.EQUALS_IGNORE_CASE, value);
     }
 
