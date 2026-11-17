@@ -8,7 +8,7 @@ public final class SystemClock extends SpringLensClock {
 
     private SystemClock() {
         if (INSTANCE != null) {
-            throw new IllegalStateException("The SystemClock bean=instance already created");
+            throw new IllegalStateException("Instance of SystemClock already created");
         }
     }
 
