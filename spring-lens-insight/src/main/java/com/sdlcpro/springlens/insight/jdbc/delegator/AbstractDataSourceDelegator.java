@@ -1,5 +1,7 @@
 package com.sdlcpro.springlens.insight.jdbc.delegator;
 
+import com.sdlcpro.springlens.util.Preconditions;
+
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -19,6 +21,7 @@ public abstract class AbstractDataSourceDelegator implements DataSource {
     protected final DataSource dataSource;
 
     public AbstractDataSourceDelegator(DataSource dataSource) {
+        Preconditions.requireNonNull(dataSource, "The instance of datasource must not be null");
         this.dataSource = dataSource;
     }
 

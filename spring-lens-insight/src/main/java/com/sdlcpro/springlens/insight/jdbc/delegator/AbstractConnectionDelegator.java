@@ -1,5 +1,7 @@
 package com.sdlcpro.springlens.insight.jdbc.delegator;
 
+import com.sdlcpro.springlens.util.Preconditions;
+
 import java.sql.*;
 import java.util.Map;
 import java.util.Properties;
@@ -9,6 +11,7 @@ public abstract class AbstractConnectionDelegator implements Connection {
     protected final Connection connection;
 
     public AbstractConnectionDelegator(Connection connection) {
+        Preconditions.requireNonNull(connection, "The instance of connection must not be null");
         this.connection = connection;
     }
 
