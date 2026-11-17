@@ -19,7 +19,7 @@ class SqlStatementEntryTest {
         assertNotNull(entry);
         assertEquals("SELECT * FROM users", entry.sql());
         assertEquals(1, entry.occurrenceCount());
-        assertEquals(CATEGORY, entry.sqlCategory());
+        assertEquals(CATEGORY, entry.category());
     }
 
     @Test

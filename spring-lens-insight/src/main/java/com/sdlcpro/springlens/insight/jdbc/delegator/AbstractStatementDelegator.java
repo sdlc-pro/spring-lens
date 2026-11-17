@@ -1,11 +1,14 @@
 package com.sdlcpro.springlens.insight.jdbc.delegator;
 
+import com.sdlcpro.springlens.util.Preconditions;
+
 import java.sql.*;
 
 public abstract class AbstractStatementDelegator implements Statement {
     protected final Statement statement;
 
     public AbstractStatementDelegator(Statement statement) {
+        Preconditions.requireNonNull(statement, "The instance of statement must not be null");
         this.statement = statement;
     }
 

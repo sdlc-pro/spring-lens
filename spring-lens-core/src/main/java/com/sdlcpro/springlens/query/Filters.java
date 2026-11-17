@@ -33,7 +33,7 @@ public final class Filters {
             return false;
         }
 
-        if (value instanceof Map<?,?> map
+        if (value instanceof Map<?, ?> map
                 && map.isEmpty()) {
             return false;
         }
@@ -79,7 +79,14 @@ public final class Filters {
                 : Filter.UNFILTERED;
     }
 
-    public static Filter containsIgnoreCaseIfPresent(String property, CharSequence value) {
+    public static <T, R> Filter containsIgnoreCaseIfPresent(String property, T value, Function<T, R> valueMapper) {
+        Preconditions.notNull(valueMapper, "Value mapper must not be null");
+        return isValuePresent(value)
+                ? containsIgnoreCase(property, Preconditions.requireNonNull(valueMapper.apply(value), "Mapped value must not be null"))
+                : Filter.UNFILTERED;
+    }
+
+    public static Filter containsIgnoreCaseIfPresent(String property, Object value) {
         return isValuePresent(value) ? containsIgnoreCase(property, value) : Filter.UNFILTERED;
     }
 
@@ -115,7 +122,7 @@ public final class Filters {
         return ConditionalFilter.of(property, ConditionalOperator.CONTAINS, value);
     }
 
-    public static Filter containsIgnoreCase(String property, CharSequence value) {
+    public static Filter containsIgnoreCase(String property, Object value) {
         return ConditionalFilter.of(property, ConditionalOperator.CONTAINS_IGNORE_CASE, value);
     }
 
