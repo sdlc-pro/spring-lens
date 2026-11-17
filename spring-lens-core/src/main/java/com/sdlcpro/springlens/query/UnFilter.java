@@ -5,7 +5,7 @@ final class UnFilter implements Filter {
 
     private UnFilter() {
         if (INSTANCE != null) {
-            throw new IllegalStateException("The bean=instance of UnFilter already created");
+            throw new IllegalStateException("Instance of UnFilter already created");
         }
     }
 

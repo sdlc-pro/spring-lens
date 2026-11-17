@@ -11,7 +11,7 @@ public final class SteadyClock extends SpringLensClock {
 
     private SteadyClock() {
         if (INSTANCE != null) {
-            throw new IllegalStateException("The SteadyClock bean=instance already created");
+            throw new IllegalStateException("Instance of SteadyClock already created");
         }
         this.startInstant = Clock.systemUTC().instant();
         this.startNanoTime = System.nanoTime();
