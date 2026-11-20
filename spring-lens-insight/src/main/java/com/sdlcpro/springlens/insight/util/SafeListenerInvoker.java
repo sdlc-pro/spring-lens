@@ -64,7 +64,7 @@ public final class SafeListenerInvoker {
     }
 
     public static <L, A> void invoke(Collection<L> listeners, A arg, ListenerMethod<L, A> method) {
-         invoke(listeners, l -> method.call(l, arg));
+        invoke(listeners, l -> method.call(l, arg));
     }
 
     public static <L, A1, A2> void invoke(Collection<L> listeners, A1 a1, A2 a2, ListenerMethod2<L, A1, A2> method) {
@@ -84,12 +84,21 @@ public final class SafeListenerInvoker {
     }
 
     public static <L> void invoke(Collection<L> listeners, Consumer<L> consumer) {
-        if (listeners != null && !listeners.isEmpty()) {
-            for (L listener : listeners) {
+        if (consumer == null || listeners == null || listeners.isEmpty()) {
+            return;
+        }
+
+        for (L listener : listeners) {
+            if (listener != null) {
                 try {
                     consumer.accept(listener);
                 } catch (Exception ex) {
-                    logger.error("Listener '{}' failed, Ex: {}", listener.getClass().getName(), ex.getMessage(), ex);
+                    logger.debug(
+                            "Exception occurred while executing listener '{}': {}",
+                            listener.getClass().getName(),
+                            ex.getMessage(),
+                            ex
+                    );
                 }
             }
         }
