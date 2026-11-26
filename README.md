@@ -126,6 +126,23 @@ Visualize:
 * Circular dependencies
 * Application architecture
 
+### Security Vulnerability Scanning (POC)
+
+Check your application's dependencies against the OSV.dev advisory database at startup.
+
+Features:
+
+* Automatic Maven dependency inventory (including Spring Boot fat jars)
+* Background scan on application start, never blocks startup
+* Severity classification from database-supplied data (CVSS v3)
+* In-memory results, informational only
+* Endpoints under `/spring-lens/api/security`: `GET /vulnerabilities`, `GET /vulnerabilities/summary`, `GET /dependencies`, `GET /scans/latest`
+* Configuration keys: `spring.lens.security.scan.enabled`, `spring.lens.security.scan.scan-on-startup`, `spring.lens.security.scan.data-source.base-url`, `spring.lens.security.scan.data-source.timeout`, `spring.lens.security.scan.data-source.batch-size`
+
+Scanning is on by default and sends the groupId:artifactId and version of every classpath jar (including internal ones) to OSV.dev on startup; disable with `spring.lens.security.scan.enabled=false` or `spring.lens.security.scan.scan-on-startup=false`.
+
+See [docs/security/vulnerability-scanning-poc.md](docs/security/vulnerability-scanning-poc.md) for results and limitations.
+
 ## Zero Configuration Philosophy
 
 Spring Lens is designed around a simple principle:
