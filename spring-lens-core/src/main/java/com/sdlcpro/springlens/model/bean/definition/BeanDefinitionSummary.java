@@ -45,7 +45,7 @@ public record BeanDefinitionSummary(
     public BeanDefinitionSummary {
         contextDistribution = DefensiveCopies.immutableMapOrEmpty(contextDistribution);
         scopeDistribution = DefensiveCopies.immutableMapOrEmpty(scopeDistribution);
-        roleDistribution = DefensiveCopies.immutableMapOrEmpty(roleDistribution);
+        roleDistribution = DefensiveCopies.immutableEnumMapOrEmpty(roleDistribution);
         loadingModeDistribution = DefensiveCopies.immutableEnumMapOrEmpty(loadingModeDistribution);
 
         Preconditions.isTrue(
