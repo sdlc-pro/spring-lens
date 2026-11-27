@@ -141,8 +141,6 @@ Features:
 
 Scanning is on by default and sends the groupId:artifactId and version of every classpath jar (including internal ones) to OSV.dev on startup; disable with `spring.lens.security.scan.enabled=false` or `spring.lens.security.scan.scan-on-startup=false`.
 
-See [docs/security/vulnerability-scanning-poc.md](docs/security/vulnerability-scanning-poc.md) for results and limitations.
-
 ## Zero Configuration Philosophy
 
 Spring Lens is designed around a simple principle:
